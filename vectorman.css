@@ -1,79 +1,13 @@
-
-vector-man-head {
-  width: 9px;
-  height: 8px;
-  background-image: url(parts/head.png);
+html, body {
+  width: 100%;
+  height: 100%;
 }
 
-vector-man-connector {
-  width: 3px;
-  height: 3px;
-  background-image: url(parts/connector.png);
+body {
+  margin: 0;
+  background: black;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
-vector-man-upper-body {}
-  vector-man-chest {
-    width: 16px;
-    height: 16px;
-    z-index: 1;
-    background-image: url(parts/ball-large.png);
-  }
-
-  vector-man-arm {}
-    vector-man-shoulder {
-      width: 13px;
-      height: 11px;
-      background-image: url(parts/ball-oblong-light.png);
-    }
-    vector-man-elbow {
-      width: 5px;
-      height: 5px;
-      background-image: url(parts/ball-small-light.png);
-    }
-    vector-man-hand {
-      width: 9px;
-      height: 8px;
-      background-image: url(parts/hand.png);
-    }
-
-  vector-man-arm.right {
-    z-index: 2;
-  }
-
-  vector-man-arm.left {
-    z-index: 0;
-  }
-
-  vector-man-arm.left vector-man-shoulder {
-      width: 13px;
-      height: 11px;
-      background-image: url(parts/ball-oblong-dark.png);
-    }
-    vector-man-arm.left vector-man-elbow {
-      width: 5px;
-      height: 5px;
-      background-image: url(parts/ball-small-dark.png);
-    }
-    vector-man-arm.left vector-man-hand {
-      width: 9px;
-      height: 8px;
-      background-image: url(parts/hand.png);
-    }
-
-vector-lower-body {}
-  vector-man-pelvis {
-    width: 7px;
-    height: 7px;
-    background-image: url(parts/ball-medium-light.png);
-  }
-  vector-man-leg {}
-    vector-man-knee {
-      width: 5px;
-      height: 5px;
-      background-image: url(parts/ball-small-light.png);
-    }
-    vector-man-foot {
-      width: 16px;
-      height: 9px;
-      background-image: url(parts/foot.png);
-    }

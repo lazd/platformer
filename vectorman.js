@@ -1,23 +1,24 @@
-
-var game = new Phaser.Game(800, 600, Phaser.CANVAS, 'phaser-example', { preload: preload, create: create, update: update, render: render });
+var game = new Phaser.Game(window.innerWidth, window.innerHeight, Phaser.CANVAS, 'vectorman', {
+  preload: preload,
+  create: create,
+  update: update,
+  render: render
+});
 
 function preload() {
-
   game.load.tilemap('level1', 'assets/level1.json', null, Phaser.Tilemap.TILED_JSON);
-  game.load.image('tiles-1', 'assets/tiles-1.png');
+  game.load.image('tiles', 'assets/tiles.png');
   game.load.spritesheet('vectorman', 'assets/vectorman.png', 100, 100);
-  game.load.spritesheet('droid', 'assets/droid.png', 32, 32);
-  game.load.image('starSmall', 'assets/star.png');
-  game.load.image('starBig', 'assets/star2.png');
   game.load.image('background', 'assets/background2.png');
-
 }
 
 var map;
 var tileset;
-var layer;
+var foreground;
+var background;
 var player;
-var mode = 'right';
+var running = false;
+var mode = null;
 var facing = 'right';
 var runTimer = 0;
 var cursors;
@@ -57,28 +58,28 @@ function create() {
 
   map = game.add.tilemap('level1');
 
-  map.addTilesetImage('tiles-1');
+  map.addTilesetImage('tiles');
 
-  map.setCollisionByExclusion([ 13, 14, 15, 16, 46, 47, 48, 49, 50, 51 ]);
+  background = map.createLayer('Background');
+  background.resizeWorld();
 
-  layer = map.createLayer('Tile Layer 1');
+  foreground = map.createLayer('Foreground');
+  foreground.resizeWorld();
 
-  //  Un-comment this on to see the collision tiles
-  layer.debug = true;
-
-  layer.resizeWorld();
+  // Collide on everything in the foreground
+  map.setCollisionBetween(0, 1000, true, foreground);
 
   game.physics.arcade.gravity.y = 500;
 
-  player = game.add.sprite(100, 100, 'vectorman');
+  player = game.add.sprite(128, 768, 'vectorman');
   player.anchor.setTo(0.5, 0); //so it flips around its middle
-
   game.physics.enable(player, Phaser.Physics.ARCADE);
 
-  player.body.bounce.y = 0.1;
+  player.body.bounce.y = 0; // No bounce!
   player.body.collideWorldBounds = true;
-  player.body.setSize(50, 50, 0, 40);
+  player.body.setSize(50, 50, 0, 39);
 
+  // Setup animations
   for (var animationName in animations) {
     var animationFrames = animations[animationName];
     console.log('Animation %s runs from %d to %d', animationName, animationFrames[0]-1, animationFrames[1]-1);
@@ -87,6 +88,7 @@ function create() {
 
   game.camera.follow(player);
 
+  // Controls
   cursors = game.input.keyboard.createCursorKeys();
   jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 }
@@ -100,11 +102,11 @@ var timeToLand = 16/60 * 1000;
 // The time between jumps
 var jumpTime = 250;
 var jumpVelocity = 275;
-var boostVelocity = 250;
-var maxBoosts = 2;
+var boostVelocity = 300;
+var maxBoosts = 1;
 
 // The number of boosts the player has used in flight
-var boostCount = 0;
+var boostCount = 2;
 
 // The speed of running
 var runStartSpeed = 180;
@@ -120,6 +122,7 @@ var jumpReleased = true;
 function run(direction) {
   var additionalRunVelocity = 0;
 
+  // Set sprite direction
   if (direction === 'right') {
     player.scale.x = -1;
   }
@@ -128,12 +131,12 @@ function run(direction) {
   }
 
   // If they switch direction or just start running
-  if (mode !== 'running') {
+  if (!running) {
     // Start a timer where we'll run at full speed
     runTimer = game.time.now + timeToRun;
 
     fullSpeed = false;
-    mode = 'running';
+    running = true;
     facing = direction;
   }
   else {
@@ -154,22 +157,26 @@ function run(direction) {
 
     player.animations.play(animation);
   }
+  else if (mode != 'jump' && mode != 'boost') {
+    mode = 'jump';
+    player.animations.play('jump');
+  }
 
   // Set speed
   player.body.velocity.x = (direction === 'left' ? -1 : 1) * ((fullSpeed ? runFullSpeed : runStartSpeed) + additionalRunVelocity);
 }
 
 function update() {
+  // Only apply physics to the foreground
+  game.physics.arcade.collide(player, foreground);
 
-  game.physics.arcade.collide(player, layer);
-
+  // Reset velocity
   player.body.velocity.x = 0;
 
   var onFloor = player.body.onFloor();
-  
-  // When we touch the ground, reset boost count
+
   if (onFloor) {
-    boostCount = 0;
+    // If we were jumping, but we landed on the floor, show the landing animation
     if (mode === 'jump') {
       mode = 'land';
       player.animations.play('land');
@@ -204,17 +211,19 @@ function update() {
   }
 
   if (jumpButton.isDown) {
-    if (onFloor && jumpReleased) {
-      player.body.velocity.y = -1 * jumpVelocity;
-      jumpStart = game.time.now;
-      mode = 'jump';
-      player.animations.play('jump');
-    }
-    else if (jumpButton.isDown && canBoost) {
-      player.body.velocity.y = -1 * boostVelocity;
-      boostCount++;
-      player.animations.stop();
-      player.animations.play('boost');
+    if (jumpReleased) {
+      if (onFloor) {
+        player.body.velocity.y = -1 * jumpVelocity;
+        jumpStart = game.time.now;
+        mode = 'jump';
+        player.animations.play('jump');
+      }
+      else if (jumpButton.isDown && canBoost) {
+        player.body.velocity.y = -1 * boostVelocity;
+        boostCount++;
+        player.animations.stop();
+        player.animations.play('boost');
+      }
     }
 
     jumpReleased = false;
@@ -223,6 +232,10 @@ function update() {
     jumpReleased = true;
   }
 
+  // When we touch the ground, reset boost count
+  if (onFloor) {
+    boostCount = 0;
+  }
 }
 
 function render () {
