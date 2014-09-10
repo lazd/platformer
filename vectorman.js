@@ -25,6 +25,8 @@ var MAXBOOSTS = 1;
 var RUNSTARTSPEED = 180;
 var RUNFULLSPEED = 300;
 
+var VELOCITYDAMPING = 0.85;
+
 var map;
 var tileset;
 var foreground;
@@ -205,11 +207,16 @@ function update() {
   game.physics.arcade.collide(player, foreground, collisionHandler);
 
   // Reset velocity
-  player.body.velocity.x = 0;
-
   var onFloor = player.body.onFloor();
 
+  if (Math.abs(player.body.velocity.x)) {
+    player.body.velocity.x *= VELOCITYDAMPING;
+  }
+
   if (onFloor) {
+    // Reset velocity
+    // player.body.velocity.x = 0;
+
     // If we were jumping, but we landed on the floor, show the landing animation
     if (mode === 'jump') {
       mode = 'land';
