@@ -5,7 +5,7 @@ function preload() {
 
   game.load.tilemap('level1', 'assets/level1.json', null, Phaser.Tilemap.TILED_JSON);
   game.load.image('tiles-1', 'assets/tiles-1.png');
-  game.load.spritesheet('vectorman', 'assets/vectorman.png', 80, 80);
+  game.load.spritesheet('vectorman', 'assets/vectorman.png', 100, 100);
   game.load.spritesheet('droid', 'assets/droid.png', 32, 32);
   game.load.image('starSmall', 'assets/star.png');
   game.load.image('starBig', 'assets/star2.png');
@@ -23,6 +23,20 @@ var runTimer = 0;
 var cursors;
 var jumpButton;
 var bg;
+
+// 60 FPS
+var spriteSpeed = 60;
+
+// 1 based frame numbers of animations
+var animations = {
+  'idle': [1, 31, false],
+  'run-start': [32, 57, false],
+  'run': [58, 91, true],
+  'jump': [92, 120, false],
+  'boost': [121, 156, false],
+  'fall': [120, 120, false],
+  'land': [157, 173, false]
+};
 
 function spriteMap(start, end) {
   var map = [];
@@ -56,29 +70,20 @@ function create() {
 
   game.physics.arcade.gravity.y = 500;
 
-  player = game.add.sprite(128, 128, 'vectorman');
+  player = game.add.sprite(100, 100, 'vectorman');
   player.anchor.setTo(0.5, 0); //so it flips around its middle
 
   game.physics.enable(player, Phaser.Physics.ARCADE);
 
   player.body.bounce.y = 0.1;
   player.body.collideWorldBounds = true;
-  player.body.setSize(50, 50, 0, 30);
+  player.body.setSize(50, 50, 0, 40);
 
-  // 60 FPS
-  var spriteSpeed = 60;
-  player.animations.add('idle', spriteMap(70, 100), spriteSpeed, true);
-
-  player.animations.add('run-start', spriteMap(0, 25), spriteSpeed, false);
-  player.animations.add('run', spriteMap(26, 58), spriteSpeed, true);
-
-  player.animations.add('jumping', spriteMap(112, 140), spriteSpeed, false);
-
-  player.animations.add('boost', spriteMap(134, 140), spriteSpeed, false);
-
-  player.animations.add('fall', [140], spriteSpeed, false);
-
-  player.animations.add('land', spriteMap(154, 170), spriteSpeed, false);
+  for (var animationName in animations) {
+    var animationFrames = animations[animationName];
+    console.log('Animation %s runs from %d to %d', animationName, animationFrames[0]-1, animationFrames[1]-1);
+    player.animations.add(animationName, spriteMap(animationFrames[0]-1, animationFrames[1]-1), spriteSpeed, animationFrames[2]);
+  }
 
   game.camera.follow(player);
 
@@ -96,7 +101,7 @@ var timeToLand = 16/60 * 1000;
 var jumpTime = 250;
 var jumpVelocity = 275;
 var boostVelocity = 250;
-var maxBoosts = 1;
+var maxBoosts = 2;
 
 // The number of boosts the player has used in flight
 var boostCount = 0;
@@ -165,7 +170,7 @@ function update() {
   // When we touch the ground, reset boost count
   if (onFloor) {
     boostCount = 0;
-    if (mode === 'jumping') {
+    if (mode === 'jump') {
       mode = 'land';
       player.animations.play('land');
       landStart = game.time.now;
@@ -183,8 +188,8 @@ function update() {
       player.animations.play('idle');
       mode = 'idle';
     }
-    else if (mode !== 'jumping') {
-      mode = 'jumping';
+    else if (mode !== 'jump') {
+      mode = 'jump';
       player.animations.play('fall');
     }
   }
@@ -202,12 +207,13 @@ function update() {
     if (onFloor && jumpReleased) {
       player.body.velocity.y = -1 * jumpVelocity;
       jumpStart = game.time.now;
-      mode = 'jumping';
-      player.animations.play('jumping');
+      mode = 'jump';
+      player.animations.play('jump');
     }
     else if (jumpButton.isDown && canBoost) {
       player.body.velocity.y = -1 * boostVelocity;
       boostCount++;
+      player.animations.stop();
       player.animations.play('boost');
     }
 
