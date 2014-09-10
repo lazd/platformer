@@ -38,6 +38,7 @@ var cursors;
 var jumpButton;
 var bg;
 var music;
+var audio;
 
 // Whether the player is currently running at full speed
 var fullSpeed = false;
@@ -68,6 +69,8 @@ function preload() {
   game.load.spritesheet('vectorman', 'assets/vectorman.png', 100, 100);
   game.load.image('background', 'assets/background.png');
   game.load.audio('bamboo-mill', ['assets/music/Bamboo Mill.ogg']);
+  game.load.audio('audio', ['assets/audio/sprite.mp3', 'assets/audio/sprite.ogg']);
+  game.load.json('audio', 'assets/audio/sprite.json');
 }
 
 /**
@@ -76,12 +79,27 @@ function preload() {
 function spriteMap(start, end) {
   var map = [];
   for (var i = start; i <= end; i++) {
-  map.push(i);
+    map.push(i);
   }
   return map;
 }
 
 function create() {
+  // Play music
+  music = game.add.audio('bamboo-mill');
+  music.play();
+
+  // Setup audio
+  audio = game.add.audio('audio');
+
+  var audioInfo = game.cache.getJSON('audio');
+  for (var soundName in audioInfo.spritemap) {
+    var sound = audioInfo.spritemap[soundName];
+    // console.log('Sound %s runs from %d to %d', soundName, sound.start, sound.end - sound.start);
+    audio.addMarker(soundName, sound.start, sound.end - sound.start);
+  }
+
+  // Start physics simulation
   game.physics.startSystem(Phaser.Physics.ARCADE);
 
   // Same as bottom of background
@@ -117,7 +135,7 @@ function create() {
   // Setup animations
   for (var animationName in animations) {
     var animationFrames = animations[animationName];
-    console.log('Animation %s runs from %d to %d', animationName, animationFrames[0]-1, animationFrames[1]-1);
+    // console.log('Animation %s runs from %d to %d', animationName, animationFrames[0]-1, animationFrames[1]-1);
     player.animations.add(animationName, spriteMap(animationFrames[0]-1, animationFrames[1]-1), ANIMATIONSPEED, animationFrames[2]);
   }
 
@@ -126,10 +144,6 @@ function create() {
   // Controls
   cursors = game.input.keyboard.createCursorKeys();
   jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
-
-  // Play music
-  music = game.add.audio('bamboo-mill');
-  music.play();
 }
 
 /**
@@ -200,6 +214,7 @@ function update() {
     if (mode === 'jump') {
       mode = 'land';
       player.animations.play('land');
+      audio.play('land');
       landStart = game.time.now;
     }
   }
@@ -242,6 +257,7 @@ function update() {
         boostCount++;
         player.animations.stop();
         player.animations.play('boost');
+        audio.play('boost');
       }
     }
 
