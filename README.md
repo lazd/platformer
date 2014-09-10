@@ -1,6 +1,12 @@
 # platformer
 > A 2D platformer experiment
 
+## Controls
+
+**Arrow keys** for movement.
+
+**Space** jumps. Pressing space again while in the air will "boost" jump you.
+
 ## Usage
 
 Start a local server:
