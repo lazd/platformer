@@ -17,8 +17,8 @@ var TIMETORUN = 26/60 * 1000;
 var GRAVITY = 650;
 
 // The time between jumps
-var JUMPVELOCITY = 325;
-var BOOSTVELOCITY = 350;
+var JUMPVELOCITY = 340;
+var BOOSTVELOCITY = 365;
 var MAXBOOSTS = 1;
 
 // The speed of running
@@ -202,7 +202,7 @@ function run(direction) {
 
 function update() {
   // Only apply physics to the foreground
-  game.physics.arcade.collide(player, foreground);
+  game.physics.arcade.collide(player, foreground, collisionHandler);
 
   // Reset velocity
   player.body.velocity.x = 0;
@@ -271,6 +271,9 @@ function update() {
   if (onFloor) {
     boostCount = 0;
   }
+}
+
+function collisionHandler(obj1, obj2) {
 }
 
 function render() {
