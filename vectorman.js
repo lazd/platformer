@@ -52,6 +52,9 @@ var boostCount = 0;
 // When the player started landing
 var landStart = 0;
 
+// Whether the player is on the floor or not
+var touching = { down: false, up: false};
+
 // 1 based frame numbers of animations
 var animations = {
   'idle': [1, 31, false],
@@ -100,15 +103,16 @@ function create() {
   }
 
   // Start physics simulation
-  game.physics.startSystem(Phaser.Physics.ARCADE);
+  game.physics.startSystem(Phaser.Physics.P2JS);
+  game.physics.p2.gravity.y = GRAVITY;
 
   // Same as bottom of background
   game.stage.backgroundColor = '#261e11';
   bg = game.add.tileSprite(0, 0, 3188, 900, 'background');
   bg.fixedToCamera = true;
 
+  // Setup map
   map = game.add.tilemap('level1');
-
   map.addTilesetImage('tiles');
 
   background = map.createLayer('Background');
@@ -117,20 +121,22 @@ function create() {
   foreground = map.createLayer('Foreground');
   foreground.resizeWorld();
 
+  foreground.debug = true; // Show collision box
+
   // Collide on everything in the foreground
   map.setCollisionBetween(0, 1000, true, foreground);
 
-  game.physics.arcade.gravity.y = GRAVITY;
+  // Convert tiles to polylines
+  foregroundTiles = game.physics.p2.convertTilemap(map, foreground);
 
   player = game.add.sprite(128, 768, 'vectorman');
   player.anchor.setTo(0.5, 0); // So it flips around its middle
-  game.physics.enable(player, Phaser.Physics.ARCADE);
+  game.physics.p2.enable(player);
 
-  player.body.bounce.y = 0; // Don't bounce
-  player.body.collideWorldBounds = true;
-  player.body.setSize(50, 50, 0, 39);
+  player.body.fixedRotation = true; // Never rotate
+  player.body.debug = true; // Show collision box
 
-  setSpriteDirection(facing);
+  setNormalHitBox();
 
   // Setup animations
   for (var animationName in animations) {
@@ -139,7 +145,11 @@ function create() {
     player.animations.add(animationName, spriteMap(animationFrames[0]-1, animationFrames[1]-1), ANIMATIONSPEED, animationFrames[2]);
   }
 
+  // Camera follows player
   game.camera.follow(player);
+
+  // Face initial direction
+  setSpriteDirection(facing);
 
   // Controls
   cursors = game.input.keyboard.createCursorKeys();
@@ -185,7 +195,7 @@ function run(direction) {
     additionalRunVelocity = (1 - (runTimer - game.time.now) / TIMETORUN) * (RUNFULLSPEED - RUNSTARTSPEED);
   }
 
-  if (player.body.onFloor()) {
+  if (touching.down) {
     // Switch the animation
     var animation = 'run' + (fullSpeed ? '' : '-start');
 
@@ -200,16 +210,49 @@ function run(direction) {
   player.body.velocity.x = (direction === 'left' ? -1 : 1) * ((fullSpeed ? RUNFULLSPEED : RUNSTARTSPEED) + additionalRunVelocity);
 }
 
+function getTouches(someone) {
+  var yAxis = p2.vec2.fromValues(0, 1);
+  var down = false;
+  var up = false;
+  for (var i = 0; i < game.physics.p2.world.narrowphase.contactEquations.length; i++) {
+    var c = game.physics.p2.world.narrowphase.contactEquations[i]; // cycles through all the contactEquations until it finds our "someone"
+    if (c.bodyA === someone.body.data || c.bodyB === someone.body.data) {
+      var d = p2.vec2.dot(c.normalA, yAxis); // Normal dot Y-axis
+      if (c.bodyA === someone.body.data) d *= -1;
+      if (d > 0.5) {
+        down = true;
+      }
+      else if (d < 0.5) {
+        up = true;
+      }
+    }
+  }
+
+  return {
+    down: down,
+    up: up
+  };
+}
+
+function setNormalHitBox() {
+  // player.body.setRectangleFromSprite(player); // Size of sprite
+  player.body.setCircle(32, 0, 16); // Circular collision body
+  // player.body.setRectangle(42, 50, 0, 16); // Rectangular body
+}
+
 function update() {
   // Only apply physics to the foreground
-  game.physics.arcade.collide(player, foreground, collisionHandler);
+  // game.physics.arcade.collide(player, foreground, collisionHandler);
 
   // Reset velocity
   player.body.velocity.x = 0;
 
-  var onFloor = player.body.onFloor();
+  // Calculate if we're touching
+  var touches = getTouches(player);
+  touching.down = touches.down;
+  touching.up = touches.up;
 
-  if (onFloor) {
+  if (touching.down) {
     // If we were jumping, but we landed on the floor, show the landing animation
     if (mode === 'jump') {
       mode = 'land';
@@ -226,7 +269,7 @@ function update() {
     run('right');
   }
   else if (mode != 'land' || game.time.now > landStart + TIMETOLAND) {
-    if (onFloor) {
+    if (touching.down) {
       player.animations.play('idle');
       mode = 'idle';
     }
@@ -241,13 +284,13 @@ function update() {
     // not pressing jump
     // not over boost count
   var canBoost = false;
-  if (jumpReleased && !onFloor && boostCount < MAXBOOSTS) {
+  if (jumpReleased && !touching.down && boostCount < MAXBOOSTS) {
     canBoost = true;
   }
 
   if (jumpButton.isDown) {
     if (jumpReleased) {
-      if (onFloor) {
+      if (touching.down) {
         player.body.velocity.y = -1 * JUMPVELOCITY;
         mode = 'jump';
         player.animations.play('jump');
@@ -268,7 +311,7 @@ function update() {
   }
 
   // When we touch the ground, reset boost count
-  if (onFloor) {
+  if (touching.down) {
     boostCount = 0;
   }
 }
