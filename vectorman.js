@@ -260,21 +260,6 @@ function update() {
     }
   }
 
-  var isLanding = mode === 'land' && game.time.now < landStart + TIMETOLAND;
-  var isCrouching = mode === 'crouch';
-  var isGettingUp = mode === 'getup' && game.time.now < getUpStart + TIMETOGETUP;
-
-  if (!isCrouching && !isLanding && !isGettingUp) {
-    if (onFloor && !isRunning) {
-      player.animations.play('idle');
-      mode = 'idle';
-    }
-    else if (mode !== 'jump') {
-      mode = 'jump';
-      player.animations.play('fall');
-    }
-  }
-
   // If we're:
     // not on the floor
     // not pressing jump
@@ -306,6 +291,26 @@ function update() {
     jumpReleased = true;
   }
 
+  var isLanding = mode === 'land' && game.time.now < landStart + TIMETOLAND;
+  var isCrouching = mode === 'crouch';
+  var isGettingUp = mode === 'getup' && game.time.now < getUpStart + TIMETOGETUP;
+
+  if (!isCrouching && !isLanding && !isGettingUp) {
+    if (onFloor) {
+      if (!isRunning) {
+        player.animations.play('idle');
+        mode = 'idle';
+      }
+      else {
+        // Reset mode after landing
+        mode = null;
+      }
+    }
+    else if (mode !== 'jump') {
+      mode = 'jump';
+      player.animations.play('fall');
+    }
+  }
   // When we touch the ground, reset boost count
   if (onFloor) {
     boostCount = 0;
