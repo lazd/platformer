@@ -10,4 +10,27 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+
+  font-family: monospace;
+}
+
+#tweak {
+  color: white;
+  position: fixed;
+  top: 0;
+  right: 0;
+
+  padding: 10px;
+  text-align: right;
+}
+
+.ValueTweaker {
+  display: block;
+}
+
+.ValueTweaker input {
+  margin-left: 10px;
+  font-family: monospace;
+  width: 50px;
+  font-size: 12px;
 }

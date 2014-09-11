@@ -17,18 +17,18 @@ var TIMETOGETUP = 6/60 * 1000;
 var TIMETORUN = 26/60 * 1000;
 
 // World gravity
-var GRAVITY = 1000;
+var GRAVITY = 1250;
 
 // The time between jumps
-var JUMPVELOCITY = 400;
-var BOOSTVELOCITY = 450;
+var JUMPVELOCITY = 495;
+var BOOSTVELOCITY = 545;
 var MAXBOOSTS = 1;
 
 // The speed of running
-var RUNSTARTSPEED = 180;
+var RUNSTARTSPEED = 200;
 var RUNFULLSPEED = 400;
 
-var VELOCITYDAMPING = 0.85;
+var VELOCITYDAMPING = 0.88;
 
 var map;
 var tileset;
@@ -174,7 +174,11 @@ function run(direction) {
   // Set sprite direction
   setSpriteDirection(direction);
 
-  // If they switch direction or just start running
+  if (facing !== direction) {
+    // If they switch direction, make it so they just started running
+    isRunning = false;
+  }
+
   if (!isRunning) {
     // Start a timer where we'll run at full speed
     runTimer = game.time.now + TIMETORUN;
@@ -201,7 +205,8 @@ function run(direction) {
 
     player.animations.play(animation);
   }
-  else if (mode != 'jump' && mode != 'boost') {
+  else if (mode != 'jump') {
+    // It should look like we're jumping if we're running, but we're not touching the ground
     mode = 'jump';
     player.animations.play('jump');
   }
@@ -291,11 +296,13 @@ function update() {
     jumpReleased = true;
   }
 
+  var isJumping = mode === 'jump';
   var isLanding = mode === 'land' && game.time.now < landStart + TIMETOLAND;
   var isCrouching = mode === 'crouch';
   var isGettingUp = mode === 'getup' && game.time.now < getUpStart + TIMETOGETUP;
 
-  if (!isCrouching && !isLanding && !isGettingUp) {
+  if (!isJumping && !isCrouching && !isLanding && !isGettingUp) {
+    // Idle modes
     if (onFloor) {
       if (!isRunning) {
         player.animations.play('idle');
@@ -306,11 +313,12 @@ function update() {
         mode = null;
       }
     }
-    else if (mode !== 'jump') {
+    else {
       mode = 'jump';
       player.animations.play('fall');
     }
   }
+
   // When we touch the ground, reset boost count
   if (onFloor) {
     boostCount = 0;
