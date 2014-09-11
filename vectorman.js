@@ -10,6 +10,9 @@ var ANIMATIONSPEED = 60; // fps
 // The number of frames in the landing animation
 var TIMETOLAND = 16/60 * 1000;
 
+// The number of frames in the getting up animation
+var TIMETOGETUP = 6/60 * 1000;
+
 // The number of frames in the start running animation
 var TIMETORUN = 26/60 * 1000;
 
@@ -32,7 +35,7 @@ var tileset;
 var foreground;
 var background;
 var player;
-var running = false;
+var isRunning = false;
 var mode = null;
 var facing = 'right';
 var runTimer = 0;
@@ -54,6 +57,9 @@ var boostCount = 0;
 // When the player started landing
 var landStart = 0;
 
+// When the player started getting up
+var getUpStart = 0;
+
 // 1 based frame numbers of animations
 var animations = {
   'idle': [1, 31, false],
@@ -62,7 +68,9 @@ var animations = {
   'jump': [92, 120, false],
   'boost': [121, 156, false],
   'fall': [120, 120, false],
-  'land': [157, 173, false]
+  'land': [157, 173, false],
+  'crouch': [174, 177, false],
+  'getup': [178, 184, false]
 };
 
 function preload() {
@@ -167,12 +175,12 @@ function run(direction) {
   setSpriteDirection(direction);
 
   // If they switch direction or just start running
-  if (!running) {
+  if (!isRunning) {
     // Start a timer where we'll run at full speed
     runTimer = game.time.now + TIMETORUN;
 
     fullSpeed = false;
-    running = true;
+    isRunning = true;
     facing = direction;
   }
   else {
@@ -197,6 +205,10 @@ function run(direction) {
     mode = 'jump';
     player.animations.play('jump');
   }
+  if (mode === 'crouch') {
+    // Reset mode if in crouch to avoid getting stuck on the running animation
+    mode = null;
+  }
 
   // Set speed
   player.body.velocity.x = (direction === 'left' ? -1 : 1) * ((fullSpeed ? RUNFULLSPEED : RUNSTARTSPEED) + additionalRunVelocity);
@@ -213,27 +225,47 @@ function update() {
     player.body.velocity.x *= VELOCITYDAMPING;
   }
 
-  if (onFloor) {
-    // Reset velocity
-    // player.body.velocity.x = 0;
-
-    // If we were jumping, but we landed on the floor, show the landing animation
-    if (mode === 'jump') {
-      mode = 'land';
-      player.animations.play('land');
-      audio.play('land');
-      landStart = game.time.now;
-    }
-  }
-
   if (cursors.left.isDown) {
     run('left');
   }
   else if (cursors.right.isDown) {
     run('right');
   }
-  else if (mode != 'land' || game.time.now > landStart + TIMETOLAND) {
+  else {
+    isRunning = false;
+
     if (onFloor) {
+      // If we were jumping, but we landed on the floor, show the landing animation
+      if (mode === 'jump') {
+        mode = 'land';
+        player.animations.play('land');
+        audio.play('land');
+        landStart = game.time.now;
+      }
+
+      if (cursors.down.isDown) {
+        if (mode != 'crouch') {
+          player.animations.play('crouch');
+        }
+        mode = 'crouch';
+
+        // When crouched, we stick immediately instead of sliding
+        player.body.velocity.x = 0;
+      }
+      else if (mode === 'crouch') {
+        player.animations.play('getup');
+        mode = 'getup';
+        getUpStart = game.time.now;
+      }
+    }
+  }
+
+  var isLanding = mode === 'land' && game.time.now < landStart + TIMETOLAND;
+  var isCrouching = mode === 'crouch';
+  var isGettingUp = mode === 'getup' && game.time.now < getUpStart + TIMETOGETUP;
+
+  if (!isCrouching && !isLanding && !isGettingUp) {
+    if (onFloor && !isRunning) {
       player.animations.play('idle');
       mode = 'idle';
     }
