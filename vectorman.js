@@ -17,16 +17,16 @@ var TIMETOGETUP = 6/60 * 1000;
 var TIMETORUN = 26/60 * 1000;
 
 // World gravity
-var GRAVITY = 650;
+var GRAVITY = 1000;
 
 // The time between jumps
-var JUMPVELOCITY = 340;
-var BOOSTVELOCITY = 365;
+var JUMPVELOCITY = 400;
+var BOOSTVELOCITY = 450;
 var MAXBOOSTS = 1;
 
 // The speed of running
 var RUNSTARTSPEED = 180;
-var RUNFULLSPEED = 300;
+var RUNFULLSPEED = 400;
 
 var VELOCITYDAMPING = 0.85;
 
