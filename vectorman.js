@@ -129,7 +129,7 @@ function create() {
 
   // Collide on everything in the foreground
   map.setCollisionBetween(0, 1000, true, foreground);
-
+  game.physics.arcade.TILE_BIAS = 40;
   game.physics.arcade.gravity.y = GRAVITY;
 
   player = game.add.sprite(128, 768, 'vectorman');
@@ -199,7 +199,9 @@ function run(direction) {
     additionalRunVelocity = (1 - (runTimer - game.time.now) / TIMETORUN) * (RUNFULLSPEED - RUNSTARTSPEED);
   }
 
-  if (player.body.onFloor()) {
+  var onFloor = player.body.onFloor();
+
+  if (onFloor) {
     // Switch the animation
     var animation = 'run' + (fullSpeed ? '' : '-start');
 
@@ -210,8 +212,14 @@ function run(direction) {
     mode = 'jump';
     player.animations.play('jump');
   }
+
   if (mode === 'crouch') {
     // Reset mode if in crouch to avoid getting stuck on the running animation
+    mode = null;
+  }
+
+  if (onFloor && mode === 'jump') {
+    // Reset mode if in jump to avoid getting stuck on the running animation instead of falling 
     mode = null;
   }
 
