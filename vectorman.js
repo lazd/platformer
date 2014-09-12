@@ -9,7 +9,7 @@ WebFontConfig = {
 };
 
 // Time to pause between levels
-var LEVELPAUSETIME = 8000;
+var LEVELPAUSETIME = 7000;
 
 var ANIMATIONSPEED = 60; // fps
 
@@ -53,8 +53,11 @@ var audio;
 var flag;
 var currentLevel;
 
+// Player score
+var levelTimes = [];
+
 // Level variables
-var nextLevel = 1; // The next level to load
+var currentLevelIndex = 0; // The first level to load
 var levelComplete = false; // Whether the level has been beaten
 
 // Start of level
@@ -97,16 +100,20 @@ var animations = {
   'getup': [178, 184, false]
 };
 
-var levels = {};
+var levels = [];
 
-levels[1] = {
+levels[0] = {
   player: [128, 768],
   flag: [3840, 224],
   map: '1',
-  background: 'city',
   tiles: 'scifi',
   music: 'Bamboo Mill',
   facing: 'right',
+  background: {
+    name: 'city',
+    width: 3188,
+    height: 900
+  },
   setup: function() {}
 };
 
@@ -116,10 +123,19 @@ game.state.add('run', {
   preload: preload,
   create: create,
   update: update,
-  render: render
+  render: render,
+  shutdown: function() {
+    // Stop music
+    game.sound.remove(music);
+  }
 });
 
-game.state.start('run');
+newGame();
+
+function newGame() {
+  levelTimes.length = 0;
+  game.state.start('run');
+}
 
 function preload() {
   game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
@@ -128,7 +144,7 @@ function preload() {
     var level = levels[name];
     game.load.tilemap(level.map, 'assets/levels/'+level.map+'.json', null, Phaser.Tilemap.TILED_JSON);
     game.load.image('tiles-'+level.tiles, 'assets/tiles/'+level.tiles+'.png');
-    game.load.image('background-'+level.background, 'assets/backgrounds/'+level.background+'.png');
+    game.load.image('background-'+level.background.name, 'assets/backgrounds/'+level.background.name+'.png');
 
     game.load.audio(level.music, ['assets/music/'+level.music+'.ogg', 'assets/music/'+level.music+'.mp3']);
   }
@@ -161,34 +177,43 @@ function restart() {
   game.state.restart();
 }
 
-function unloadLevel() {
-  var level = currentLevel;
-
-  if (level) {
-    // Stop music
-    game.sound.remove(music);
+function nextLevel() {
+  if (currentLevelIndex < levels.length-1) {
+    currentLevelIndex++;
   }
+  else {
+    currentLevelIndex = 0;
+  }
+  loadLevel(currentLevelIndex);
 }
 
-function loadLevel(number) {
-  var level = levels[number];
-
-  if (!level) {
-    console.error('Cannot load level %d', number);
+function loadLevel(index) {
+  if (!levels[currentLevelIndex]) {
+    console.error('Cannot load level %d', index);
     return;
   }
 
-  if (currentLevel) {
-    unloadLevel();
-  }
+  currentLevelIndex = index;
 
+  restart();
+}
+
+function create() {
+  currentLevel = levels[currentLevelIndex];
+
+  console.log('Starting game');
+
+  // Reset variables
   levelComplete = false;
 
-  // Set as current
-  currentLevel = level;
+  // Setup audio
+  audio = {};
+  sounds.forEach(function(sound) {
+    audio[sound.split('.')[0]] = game.add.audio(sound);
+  });
 
   // Play music
-  music = game.add.audio(level.music);
+  music = game.add.audio(currentLevel.music);
   music.play();
 
   // Start physics simulation
@@ -196,11 +221,11 @@ function loadLevel(number) {
 
   // Same as bottom of background
   game.stage.backgroundColor = '#261e11';
-  bg = game.add.tileSprite(0, 0, 3188, 900, 'background-'+level.background);
+  bg = game.add.tileSprite(0, 0, currentLevel.background.width, currentLevel.background.height, 'background-'+currentLevel.background.name);
   bg.fixedToCamera = true;
 
-  map = game.add.tilemap(level.map);
-  map.addTilesetImage('tiles-'+level.tiles);
+  map = game.add.tilemap(currentLevel.map);
+  map.addTilesetImage('tiles-'+currentLevel.tiles);
 
   background = map.createLayer('Background');
   background.resizeWorld();
@@ -229,7 +254,7 @@ function loadLevel(number) {
   player.body.collideWorldBounds = true;
   player.body.setSize(38, 50, 0, 39);
 
-  setSpriteDirection(player, level.facing);
+  setSpriteDirection(player, currentLevel.facing);
 
   // Setup animations
   for (var animationName in animations) {
@@ -248,14 +273,14 @@ function loadLevel(number) {
   levelStartTime = Date.now();
 
   // Set initial positions
-  player.x = level.player[0];
-  player.y = level.player[1];
+  player.x = currentLevel.player[0];
+  player.y = currentLevel.player[1];
 
-  flag.x = level.flag[0];
-  flag.y = level.flag[1];
+  flag.x = currentLevel.flag[0];
+  flag.y = currentLevel.flag[1];
 
-  if (typeof level.setup === 'function') {
-    level.setup();
+  if (typeof currentLevel.setup === 'function') {
+    currentLevel.setup();
   }
 
   if (window.location.hash.match('tweak')) {
@@ -269,20 +294,6 @@ function loadLevel(number) {
   if (window.location.hash.match('nomusic')) {
     stopMusic();
   }
-}
-
-function create() {
-  console.log('Starting game');
-
-  unloadLevel();
-
-  // Setup audio
-  audio = {};
-  sounds.forEach(function(sound) {
-    audio[sound.split('.')[0]] = game.add.audio(sound);
-  });
-
-  loadLevel(nextLevel);
 }
 
 function stopMusic() {
@@ -527,6 +538,9 @@ function flagCollisionHandler(ob1, obj2) {
   text.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
 
   console.log('Level completed in %f seconds', levelTime);
+
+  // Store score
+  levelTimes[currentLevelIndex] = levelTime;
 
   // Restart
   setTimeout(restart, LEVELPAUSETIME);
