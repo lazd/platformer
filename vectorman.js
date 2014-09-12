@@ -134,11 +134,11 @@ function create() {
 
   player = game.add.sprite(128, 768, 'vectorman');
   player.anchor.setTo(0.5, 0); // So it flips around its middle
-  game.physics.enable(player, Phaser.Physics.ARCADE);
+  game.physics.enable(player, Phaser.Physics.ARCADE, true);
 
   player.body.bounce.y = 0; // Don't bounce
   player.body.collideWorldBounds = true;
-  player.body.setSize(50, 50, 0, 39);
+  player.body.setSize(38, 50, 0, 39);
 
   setSpriteDirection(facing);
 
@@ -154,6 +154,22 @@ function create() {
   // Controls
   cursors = game.input.keyboard.createCursorKeys();
   jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+
+  if (window.location.hash.match('tweak')) {
+    tweak();
+
+    audio.mute = true;
+  }
+}
+
+function stopMusic() {
+  // Stop if it is already playing
+  music.stop();
+
+  // Stop if it hasn't played yet
+  music.onPlay.add(function() {
+    music.stop();
+  });
 }
 
 /**
@@ -337,7 +353,9 @@ function collisionHandler(obj1, obj2) {
 }
 
 function render() {
-  // game.debug.text(game.time.physicsElapsed, 32, 32);
-  // game.debug.body(player);
-  // game.debug.bodyInfo(player, 16, 24);
+  if (game.debugMode) {
+    // game.debug.text(game.time.physicsElapsed, 32, 32);
+    game.debug.body(player);
+    game.debug.bodyInfo(player, 16, 24);
+  }
 }

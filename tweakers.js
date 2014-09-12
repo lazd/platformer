@@ -25,7 +25,14 @@ var tweak = (function() {
     tweakers.appendChild(button);
   }
 
+  function debug() {
+    game.debugMode = true;
+    foreground.debug = true;
+  }
+
   function tweak() {
+    debug();
+
     tweakers = create('div');
     tweakers.className = 'Tweakers';
     document.body.appendChild(tweakers);
