@@ -86,6 +86,13 @@ WebFontConfig = {
     }
 };
 
+var sounds = [
+  'head bump',
+  'land',
+  'boost',
+  'yea'
+];
+
 function preload() {
   game.load.tilemap('level1', 'assets/level1.json', null, Phaser.Tilemap.TILED_JSON);
   game.load.image('tiles', 'assets/tiles.png');
@@ -93,8 +100,10 @@ function preload() {
   game.load.spritesheet('flag', 'assets/flag.png', 128, 64);
   game.load.image('background', 'assets/background.png');
   game.load.audio('bamboo-mill', ['assets/music/Bamboo Mill.ogg']);
-  game.load.audio('audio', ['assets/audio/sprite.mp3', 'assets/audio/sprite.ogg']);
-  game.load.json('audio', 'assets/audio/sprite.json');
+
+  sounds.forEach(function(sound) {
+    game.load.audio(sound, 'assets/audio/'+sound+'.wav');
+  });
 
   game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
 }
@@ -110,20 +119,20 @@ function spriteMap(start, end) {
   return map;
 }
 
+function playSound(sound) {
+  audio[sound].play();
+}
+
 function create() {
   // Play music
   music = game.add.audio('bamboo-mill');
   music.play();
 
   // Setup audio
-  audio = game.add.audio('audio');
-
-  var audioInfo = game.cache.getJSON('audio');
-  for (var soundName in audioInfo.spritemap) {
-    var sound = audioInfo.spritemap[soundName];
-    // console.log('Sound %s runs from %d to %d', soundName, sound.start, sound.end - sound.start);
-    audio.addMarker(soundName, sound.start, sound.end - sound.start);
-  }
+  audio = {};
+  sounds.forEach(function(sound) {
+    audio[sound] = game.add.audio(sound);
+  });
 
   // Start physics simulation
   game.physics.startSystem(Phaser.Physics.ARCADE);
@@ -289,11 +298,11 @@ function update() {
   }
 
   if (headHit) {
-    audio.play('head bump');
+    playSound('head bump');
   }
 
   if (mode === 'jump' && onFloor) {
-    audio.play('land');
+    playSound('land');
   }
 
   if (cursors.left.isDown) {
@@ -351,7 +360,7 @@ function update() {
         boostCount++;
         player.animations.stop();
         player.animations.play('boost');
-        audio.play('boost');
+        playSound('boost');
       }
     }
 
@@ -411,7 +420,7 @@ function flagCollisionHandler(ob1, obj2) {
 
   var levelTime = (Date.now() - levelStartTime) / 1000;
 
-  audio.play('yea');
+  playSound('yea');
 
   // Give the flag gravity so it falls
   flag.body.gravity.y = GRAVITY;
