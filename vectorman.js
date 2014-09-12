@@ -20,7 +20,7 @@ var TIMETORUN = 26/60 * 1000;
 var GRAVITY = 1250;
 
 // The time between jumps
-var JUMPVELOCITY = 495;
+var JUMPVELOCITY = 500;
 var BOOSTVELOCITY = 545;
 var MAXBOOSTS = 1;
 
