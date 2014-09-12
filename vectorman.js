@@ -540,7 +540,7 @@ function flagCollisionHandler(ob1, obj2) {
   console.log('Level completed in %f seconds', levelTime);
 
   // Store score
-  levelTimes[currentLevelIndex] = levelTime;
+  levelTimes[currentLevelIndex] = Math.min(levelTimes[currentLevelIndex] || Infinity, levelTime);
 
   // Restart
   setTimeout(restart, LEVELPAUSETIME);
