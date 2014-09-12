@@ -31,11 +31,11 @@
  "tilesets":[
         {
          "firstgid":1,
-         "image":"tiles.png",
+         "image":"..\/tiles\/scifi.png",
          "imageheight":736,
          "imagewidth":1120,
          "margin":0,
-         "name":"tiles",
+         "name":"tiles-scifi",
          "properties":
             {
 

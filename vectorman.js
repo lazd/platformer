@@ -1,9 +1,15 @@
-var game = new Phaser.Game(1024, 768, Phaser.AUTO, 'vectorman', {
-  preload: preload,
-  create: create,
-  update: update,
-  render: render
-});
+// Google WebFonts
+WebFontConfig = {
+    active: function() {},
+
+    google: {
+      // List of fonts to load
+      families: ['Revalia']
+    }
+};
+
+// Time to pause between levels
+var LEVELPAUSETIME = 8000;
 
 var ANIMATIONSPEED = 60; // fps
 
@@ -45,6 +51,11 @@ var bg;
 var music;
 var audio;
 var flag;
+var currentLevel;
+
+// Level variables
+var nextLevel = 1; // The next level to load
+var levelComplete = false; // Whether the level has been beaten
 
 // Start of level
 var levelStartTime;
@@ -64,6 +75,15 @@ var landStart = 0;
 // When the player started getting up
 var getUpStart = 0;
 
+// All sounds to load
+var sounds = [
+  'head bump.wav',
+  'land.wav',
+  'boost.wav',
+  'yea.wav',
+  'level complete.mp3'
+];
+
 // 1 based frame numbers of animations
 var animations = {
   'idle': [1, 31, false],
@@ -77,74 +97,110 @@ var animations = {
   'getup': [178, 184, false]
 };
 
-WebFontConfig = {
-    active: function() {},
+var levels = {};
 
-    google: {
-      // List of fonts to load
-      families: ['Revalia']
-    }
+levels[1] = {
+  player: [128, 768],
+  flag: [3840, 224],
+  map: '1',
+  background: 'city',
+  tiles: 'scifi',
+  music: 'Bamboo Mill',
+  facing: 'right',
+  setup: function() {}
 };
 
-var sounds = [
-  'head bump',
-  'land',
-  'boost',
-  'yea'
-];
+var game = new Phaser.Game(1024, 768, Phaser.AUTO, 'vectorman');
+
+game.state.add('run', {
+  preload: preload,
+  create: create,
+  update: update,
+  render: render
+});
+
+game.state.start('run');
 
 function preload() {
-  game.load.tilemap('level1', 'assets/level1.json', null, Phaser.Tilemap.TILED_JSON);
-  game.load.image('tiles', 'assets/tiles.png');
-  game.load.spritesheet('vectorman', 'assets/vectorman.png', 100, 100);
-  game.load.spritesheet('flag', 'assets/flag.png', 128, 64);
-  game.load.image('background', 'assets/background.png');
-  game.load.audio('bamboo-mill', ['assets/music/Bamboo Mill.ogg']);
-
-  sounds.forEach(function(sound) {
-    game.load.audio(sound, 'assets/audio/'+sound+'.wav');
-  });
-
   game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
+
+  for (var name in levels) {
+    var level = levels[name];
+    game.load.tilemap(level.map, 'assets/levels/'+level.map+'.json', null, Phaser.Tilemap.TILED_JSON);
+    game.load.image('tiles-'+level.tiles, 'assets/tiles/'+level.tiles+'.png');
+    game.load.image('background-'+level.background, 'assets/backgrounds/'+level.background+'.png');
+
+    game.load.audio(level.music, ['assets/music/'+level.music+'.ogg', 'assets/music/'+level.music+'.mp3']);
+  }
+
+  game.load.spritesheet('vectorman', 'assets/sprites/vectorman.png', 100, 100);
+  game.load.spritesheet('flag', 'assets/sprites/flag.png', 128, 64);
+
+  // Load each sound
+  sounds.forEach(function(sound) {
+    game.load.audio(sound, 'assets/sound/'+sound);
+  });
 }
 
 /**
   Create an array with numbers from start to end inclusive
 */
-function spriteMap(start, end) {
-  var map = [];
+function spriteRange(start, end) {
+  var array = [];
   for (var i = start; i <= end; i++) {
-    map.push(i);
+    array.push(i);
   }
-  return map;
+  return array;
 }
 
 function playSound(sound) {
   audio[sound].play();
 }
 
-function create() {
-  // Play music
-  music = game.add.audio('bamboo-mill');
-  music.play();
+function restart() {
+  game.state.restart();
+}
 
-  // Setup audio
-  audio = {};
-  sounds.forEach(function(sound) {
-    audio[sound] = game.add.audio(sound);
-  });
+function unloadLevel() {
+  var level = currentLevel;
+
+  if (level) {
+    // Stop music
+    game.sound.remove(music);
+  }
+}
+
+function loadLevel(number) {
+  var level = levels[number];
+
+  if (!level) {
+    console.error('Cannot load level %d', number);
+    return;
+  }
+
+  if (currentLevel) {
+    unloadLevel();
+  }
+
+  levelComplete = false;
+
+  // Set as current
+  currentLevel = level;
+
+  // Play music
+  music = game.add.audio(level.music);
+  music.play();
 
   // Start physics simulation
   game.physics.startSystem(Phaser.Physics.ARCADE);
 
   // Same as bottom of background
   game.stage.backgroundColor = '#261e11';
-  bg = game.add.tileSprite(0, 0, 3188, 900, 'background');
+  bg = game.add.tileSprite(0, 0, 3188, 900, 'background-'+level.background);
   bg.fixedToCamera = true;
 
-  map = game.add.tilemap('level1');
-
-  map.addTilesetImage('tiles');
+  map = game.add.tilemap(level.map);
+  map.addTilesetImage('tiles-'+level.tiles);
 
   background = map.createLayer('Background');
   background.resizeWorld();
@@ -158,8 +214,8 @@ function create() {
   // game.physics.arcade.gravity.y = GRAVITY; // Global gravity
 
   // Game sprites
-  flag = game.add.sprite(3840, 224, 'flag');
-  flag.animations.add('wave', spriteMap(0, 29), ANIMATIONSPEED, true);
+  flag = game.add.sprite(0, 0, 'flag');
+  flag.animations.add('wave', spriteRange(0, 29), ANIMATIONSPEED, true);
   flag.animations.play('wave');
   game.physics.enable(flag, Phaser.Physics.ARCADE);
 
@@ -173,13 +229,13 @@ function create() {
   player.body.collideWorldBounds = true;
   player.body.setSize(38, 50, 0, 39);
 
-  setSpriteDirection(player, facing);
+  setSpriteDirection(player, level.facing);
 
   // Setup animations
   for (var animationName in animations) {
     var animationFrames = animations[animationName];
     // console.log('Animation %s runs from %d to %d', animationName, animationFrames[0]-1, animationFrames[1]-1);
-    player.animations.add(animationName, spriteMap(animationFrames[0]-1, animationFrames[1]-1), ANIMATIONSPEED, animationFrames[2]);
+    player.animations.add(animationName, spriteRange(animationFrames[0]-1, animationFrames[1]-1), ANIMATIONSPEED, animationFrames[2]);
   }
 
   game.camera.follow(player);
@@ -187,6 +243,20 @@ function create() {
   // Controls
   cursors = game.input.keyboard.createCursorKeys();
   jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+
+  // Store level start time
+  levelStartTime = Date.now();
+
+  // Set initial positions
+  player.x = level.player[0];
+  player.y = level.player[1];
+
+  flag.x = level.flag[0];
+  flag.y = level.flag[1];
+
+  if (typeof level.setup === 'function') {
+    level.setup();
+  }
 
   if (window.location.hash.match('tweak')) {
     tweak();
@@ -199,9 +269,20 @@ function create() {
   if (window.location.hash.match('nomusic')) {
     stopMusic();
   }
+}
 
-  // Store level start time
-  levelStartTime = Date.now();
+function create() {
+  console.log('Starting game');
+
+  unloadLevel();
+
+  // Setup audio
+  audio = {};
+  sounds.forEach(function(sound) {
+    audio[sound.split('.')[0]] = game.add.audio(sound);
+  });
+
+  loadLevel(nextLevel);
 }
 
 function stopMusic() {
@@ -411,7 +492,6 @@ function update() {
   }
 }
 
-var levelComplete = false;
 function flagCollisionHandler(ob1, obj2) {
   if (levelComplete) {
     return;
@@ -420,14 +500,18 @@ function flagCollisionHandler(ob1, obj2) {
 
   var levelTime = (Date.now() - levelStartTime) / 1000;
 
+  // Stop music
+  stopMusic();
+  // game.sound.remove(music);
+
+  // Play win sound
   playSound('yea');
+  playSound('level complete');
 
   // Give the flag gravity so it falls
   flag.body.gravity.y = GRAVITY;
   player.body.velocity.x = 0;
   player.body.velocity.y = 0;
-
-  console.log('Level complete!');
 
   text = game.add.text(flag.x, flag.y, 'level complete\n'+levelTime.toFixed(2)+'s');
   text.anchor.setTo(1);
@@ -441,6 +525,11 @@ function flagCollisionHandler(ob1, obj2) {
   text.stroke = '#000000';
   text.strokeThickness = 2;
   text.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
+
+  console.log('Level completed in %f seconds', levelTime);
+
+  // Restart
+  setTimeout(restart, LEVELPAUSETIME);
 }
 
 function collisionHandler(obj1, obj2) {
