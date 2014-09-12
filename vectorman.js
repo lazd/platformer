@@ -17,18 +17,18 @@ var TIMETOGETUP = 6/60 * 1000;
 var TIMETORUN = 26/60 * 1000;
 
 // World gravity
-var GRAVITY = 1250;
+var GRAVITY = 1500;
 
 // The time between jumps
-var JUMPVELOCITY = 500;
-var BOOSTVELOCITY = 545;
+var JUMPVELOCITY = 570;
+var BOOSTVELOCITY = 670;
 var MAXBOOSTS = 1;
 
 // The speed of running
 var RUNSTARTSPEED = 200;
 var RUNFULLSPEED = 400;
 
-var VELOCITYDAMPING = 0.88;
+var VELOCITYDAMPING = 0.85;
 
 var map;
 var tileset;
@@ -44,6 +44,10 @@ var jumpButton;
 var bg;
 var music;
 var audio;
+var flag;
+
+// Start of level
+var levelStartTime;
 
 // Whether the player is currently running at full speed
 var fullSpeed = false;
@@ -73,14 +77,26 @@ var animations = {
   'getup': [178, 184, false]
 };
 
+WebFontConfig = {
+    active: function() {},
+
+    google: {
+      // List of fonts to load
+      families: ['Revalia']
+    }
+};
+
 function preload() {
   game.load.tilemap('level1', 'assets/level1.json', null, Phaser.Tilemap.TILED_JSON);
   game.load.image('tiles', 'assets/tiles.png');
   game.load.spritesheet('vectorman', 'assets/vectorman.png', 100, 100);
+  game.load.spritesheet('flag', 'assets/flag.png', 128, 64);
   game.load.image('background', 'assets/background.png');
   game.load.audio('bamboo-mill', ['assets/music/Bamboo Mill.ogg']);
   game.load.audio('audio', ['assets/audio/sprite.mp3', 'assets/audio/sprite.ogg']);
   game.load.json('audio', 'assets/audio/sprite.json');
+
+  game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
 }
 
 /**
@@ -130,17 +146,25 @@ function create() {
   // Collide on everything in the foreground
   map.setCollisionBetween(0, 1000, true, foreground);
   game.physics.arcade.TILE_BIAS = 40;
-  game.physics.arcade.gravity.y = GRAVITY;
+  // game.physics.arcade.gravity.y = GRAVITY; // Global gravity
 
+  // Game sprites
+  flag = game.add.sprite(3840, 224, 'flag');
+  flag.animations.add('wave', spriteMap(0, 29), ANIMATIONSPEED, true);
+  flag.animations.play('wave');
+  game.physics.enable(flag, Phaser.Physics.ARCADE);
+
+  // Setup player
   player = game.add.sprite(128, 768, 'vectorman');
   player.anchor.setTo(0.5, 0); // So it flips around its middle
-  game.physics.enable(player, Phaser.Physics.ARCADE, true);
+  game.physics.enable(player, Phaser.Physics.ARCADE);
 
   player.body.bounce.y = 0; // Don't bounce
+  player.body.gravity.y = GRAVITY; // Be affected by gravity
   player.body.collideWorldBounds = true;
   player.body.setSize(38, 50, 0, 39);
 
-  setSpriteDirection(facing);
+  setSpriteDirection(player, facing);
 
   // Setup animations
   for (var animationName in animations) {
@@ -157,9 +181,18 @@ function create() {
 
   if (window.location.hash.match('tweak')) {
     tweak();
-
-    audio.mute = true;
   }
+
+  if (window.location.hash.match('debug')) {
+    debug();
+  }
+
+  if (window.location.hash.match('nomusic')) {
+    stopMusic();
+  }
+
+  // Store level start time
+  levelStartTime = Date.now();
 }
 
 function stopMusic() {
@@ -175,12 +208,12 @@ function stopMusic() {
 /**
   Flip the sprite to match the given direction
 */
-function setSpriteDirection(direction) {
+function setSpriteDirection(sprite, direction) {
   if (direction === 'right') {
-    player.scale.x = -1;
+    sprite.scale.x = -1;
   }
   else {
-    player.scale.x = 1;
+    sprite.scale.x = 1;
   }
 }
 
@@ -188,7 +221,7 @@ function run(direction) {
   var additionalRunVelocity = 0;
 
   // Set sprite direction
-  setSpriteDirection(direction);
+  setSpriteDirection(player, direction);
 
   if (facing !== direction) {
     // If they switch direction, make it so they just started running
@@ -248,10 +281,19 @@ function update() {
   game.physics.arcade.collide(player, foreground, collisionHandler);
 
   // Reset velocity
-  var onFloor = player.body.onFloor();
+  var headHit = player.body.blocked.up;
+  var onFloor = player.body.blocked.down;
 
   if (Math.abs(player.body.velocity.x)) {
     player.body.velocity.x *= VELOCITYDAMPING;
+  }
+
+  if (headHit) {
+    audio.play('head bump');
+  }
+
+  if (mode === 'jump' && onFloor) {
+    audio.play('land');
   }
 
   if (cursors.left.isDown) {
@@ -268,7 +310,6 @@ function update() {
       if (mode === 'jump') {
         mode = 'land';
         player.animations.play('land');
-        audio.play('land');
         landStart = game.time.now;
       }
 
@@ -347,6 +388,50 @@ function update() {
   if (onFloor) {
     boostCount = 0;
   }
+
+  // Test if the player touches the flag
+  if (levelComplete) {
+    // Flag follows player
+    // var dirFactor = facing === 'left' ? 1 : -1;
+    // flag.x = player.x - flag.width + 32*dirFactor;
+    // flag.y = player.y + 32;
+    // setSpriteDirection(flag, facing === 'left' ? 'right' : 'left');
+  }
+  else {
+    game.physics.arcade.collide(player, flag, flagCollisionHandler);
+  }
+}
+
+var levelComplete = false;
+function flagCollisionHandler(ob1, obj2) {
+  if (levelComplete) {
+    return;
+  }
+  levelComplete = true;
+
+  var levelTime = (Date.now() - levelStartTime) / 1000;
+
+  audio.play('yea');
+
+  // Give the flag gravity so it falls
+  flag.body.gravity.y = GRAVITY;
+  player.body.velocity.x = 0;
+  player.body.velocity.y = 0;
+
+  console.log('Level complete!');
+
+  text = game.add.text(flag.x, flag.y, 'level complete\n'+levelTime.toFixed(2)+'s');
+  text.anchor.setTo(1);
+
+  text.font = 'Revalia';
+  text.fontSize = 60;
+
+  text.fill = 'white';
+
+  text.align = 'center';
+  text.stroke = '#000000';
+  text.strokeThickness = 2;
+  text.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
 }
 
 function collisionHandler(obj1, obj2) {

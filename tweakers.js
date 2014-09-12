@@ -1,4 +1,4 @@
-var tweak = (function() {
+(function() {
   var $ = document.querySelector.bind(document);
   var create = document.createElement.bind(document);
   var tweakers;
@@ -31,8 +31,6 @@ var tweak = (function() {
   }
 
   function tweak() {
-    debug();
-
     tweakers = create('div');
     tweakers.className = 'Tweakers';
     document.body.appendChild(tweakers);
@@ -71,5 +69,6 @@ var tweak = (function() {
     });
   }
 
-  return tweak;
+  window.tweak = tweak;
+  window.debug = debug;
 }());

@@ -6,99 +6,99 @@
     "assets/audio/sprite.ac3"
   ],
   "spritemap": {
-    "Collect 2": {
-      "start": 0,
-      "end": 1.2333333333333334,
-      "loop": false
-    },
-    "Collect": {
-      "start": 3,
-      "end": 4.233333333333333,
-      "loop": false
-    },
-    "Come on": {
-      "start": 6,
-      "end": 7.8,
-      "loop": false
-    },
-    "Death": {
-      "start": 9,
-      "end": 10.466666666666667,
-      "loop": false
-    },
-    "Gone, Baby, Gone": {
-      "start": 12,
-      "end": 13.35,
-      "loop": false
-    },
-    "Head Bump": {
-      "start": 15,
-      "end": 17.366666666666667,
-      "loop": false
-    },
-    "Hit 2": {
-      "start": 19,
-      "end": 21.9,
-      "loop": false
-    },
-    "Hit 3": {
-      "start": 23,
-      "end": 24.783333333333335,
-      "loop": false
-    },
-    "Hit 4": {
-      "start": 26,
-      "end": 28.083333333333332,
-      "loop": false
-    },
-    "Hit 5": {
-      "start": 30,
-      "end": 33.11666666666667,
-      "loop": false
-    },
-    "Hit 6": {
-      "start": 35,
-      "end": 36.483333333333334,
-      "loop": false
-    },
-    "Hit": {
-      "start": 38,
-      "end": 40.13333333333333,
-      "loop": false
-    },
-    "Shoot": {
-      "start": 42,
-      "end": 42.983333333333334,
-      "loop": false
-    },
-    "Toasty": {
-      "start": 44,
-      "end": 45.277097505668934,
-      "loop": false
-    },
-    "Woah 2": {
-      "start": 47,
-      "end": 48.11666666666667,
-      "loop": false
-    },
-    "Woah": {
-      "start": 50,
-      "end": 51.2,
-      "loop": false
-    },
-    "Yeah": {
-      "start": 53,
-      "end": 54.4,
-      "loop": false
-    },
     "boost": {
-      "start": 56,
-      "end": 56.916666666666664,
+      "start": 0,
+      "end": 0.9166666666666666,
+      "loop": false
+    },
+    "collect": {
+      "start": 2,
+      "end": 3.2333333333333334,
+      "loop": false
+    },
+    "collect2": {
+      "start": 5,
+      "end": 6.233333333333333,
+      "loop": false
+    },
+    "come on": {
+      "start": 8,
+      "end": 9.8,
+      "loop": false
+    },
+    "death": {
+      "start": 11,
+      "end": 12.466666666666667,
+      "loop": false
+    },
+    "gone baby gone": {
+      "start": 14,
+      "end": 15.35,
+      "loop": false
+    },
+    "head bump": {
+      "start": 17,
+      "end": 19.366666666666667,
+      "loop": false
+    },
+    "hit": {
+      "start": 21,
+      "end": 23.133333333333333,
+      "loop": false
+    },
+    "hit2": {
+      "start": 25,
+      "end": 27.9,
+      "loop": false
+    },
+    "hit3": {
+      "start": 29,
+      "end": 30.783333333333335,
+      "loop": false
+    },
+    "hit4": {
+      "start": 32,
+      "end": 34.083333333333336,
+      "loop": false
+    },
+    "hit5": {
+      "start": 36,
+      "end": 39.11666666666667,
+      "loop": false
+    },
+    "hit6": {
+      "start": 41,
+      "end": 42.483333333333334,
       "loop": false
     },
     "land": {
+      "start": 44,
+      "end": 45.06666666666667,
+      "loop": false
+    },
+    "shoot": {
+      "start": 47,
+      "end": 47.983333333333334,
+      "loop": false
+    },
+    "toasty": {
+      "start": 49,
+      "end": 50.3,
+      "loop": false
+    },
+    "whoa": {
+      "start": 52,
+      "end": 53.2,
+      "loop": false
+    },
+    "whoa2": {
+      "start": 55,
+      "end": 56.11666666666667,
+      "loop": false
+    },
+    "yea": {
       "start": 58,
-      "end": 59.06666666666667,
+      "end": 59.4,
       "loop": false
     }
   }
