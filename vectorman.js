@@ -741,6 +741,8 @@ function collisionHandler(obj1, obj2) {
 
 function render() {
   if (game.debugMode) {
+    game.time.advancedTiming = true;
+    game.debug.text(game.time.fps || '--', 2, 14, "#00ff00");
     // game.debug.text(game.time.physicsElapsed, 32, 32);
     game.debug.body(player);
     game.debug.bodyInfo(player, 16, 24);
