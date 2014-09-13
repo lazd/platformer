@@ -88,6 +88,14 @@ var landStart = 0;
 // When the player started getting up
 var getUpStart = 0;
 
+// Whether we can run or not
+var runDisabled = false;
+
+// Stop faces from switching
+var facingSwitchDisabled = false;
+
+var lastWallJumpDirection;
+
 // All sounds to load
 var sounds = [
   'head bump.wav',
@@ -262,13 +270,8 @@ function reset() {
   startText.strokeThickness = 2;
   startText.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
 
-  // Temporary fix for Phaser #1190: isDown not reset when disabled
-  cursors.left.isDown = false;
-  cursors.right.isDown = false;
-
   // Disable input
-  cursors.left.enabled = false;
-  cursors.right.enabled = false;
+  runDisabled = true;
 
   countDown = true;
 }
@@ -412,7 +415,9 @@ function run(direction) {
   var additionalRunVelocity = 0;
 
   // Set sprite direction
-  setSpriteDirection(player, direction);
+  if (!facingSwitchDisabled) {
+    setSpriteDirection(player, direction);
+  }
 
   if (facing !== direction) {
     // If they switch direction, make it so they just started running
@@ -483,8 +488,7 @@ function update() {
     }
     else if (timeToStart < 0) {
       startText.text = 'Go!';
-      cursors.left.enabled = true;
-      cursors.right.enabled = true;
+      runDisabled = false;
 
       // Store level start time
       levelStartTime = game.time.now;
@@ -515,6 +519,8 @@ function update() {
   // Reset velocity
   var headHit = player.body.blocked.up;
   var onFloor = player.body.blocked.down;
+  var onWallLeft = player.body.blocked.left;
+  var onWallRight = player.body.blocked.right;
 
   if (Math.abs(player.body.velocity.x)) {
     player.body.velocity.x *= VELOCITYDAMPING;
@@ -528,10 +534,10 @@ function update() {
     playSound('land');
   }
 
-  if (cursors.left.isDown) {
+  if (!runDisabled && cursors.left.isDown) {
     run('left');
   }
-  else if (cursors.right.isDown) {
+  else if (!runDisabled && cursors.right.isDown) {
     run('right');
   }
   else {
@@ -578,6 +584,34 @@ function update() {
         mode = 'jump';
         player.animations.play('jump');
       }
+      else if (onWallLeft || onWallRight) {
+        var jumpDirection = onWallLeft ? 'right' : 'left';
+        if (lastWallJumpDirection === jumpDirection) {
+          // jumpReleased = true; // ?
+          return;
+        }
+        lastWallJumpDirection = jumpDirection;
+
+        player.body.velocity.y = -1 * JUMPVELOCITY;
+        var xVeloc = JUMPVELOCITY;
+
+        if (onWallLeft) {
+          facing = 'right';
+        }
+        else {
+          facing = 'left';
+          xVeloc *= -1;
+        }
+
+        mode = 'jump';
+        player.animations.stop();
+        player.animations.play('jump');
+
+        facingSwitchDisabled = true;
+        setSpriteDirection(player, facing);
+
+        playSound('land');
+      }
       else if (jumpKey.isDown && canBoost) {
         player.body.velocity.y = -1 * BOOSTVELOCITY;
         boostCount++;
@@ -590,6 +624,7 @@ function update() {
     jumpReleased = false;
   }
   else {
+    facingSwitchDisabled = false;
     jumpReleased = true;
   }
 
@@ -616,9 +651,12 @@ function update() {
     }
   }
 
-  // When we touch the ground, reset boost count
   if (onFloor) {
+    // When we touch the ground, reset boost count
     boostCount = 0;
+
+    // Reset wall jump direction
+    lastWallJumpDirection = null;
   }
 
   // Test if the player touches the flag
