@@ -584,7 +584,7 @@ function update() {
         mode = 'jump';
         player.animations.play('jump');
       }
-      else if (onWallLeft || onWallRight) {
+      else if (onWallLeft || onWallRight && player.body.velocity.y <= 0) {
         var jumpDirection = onWallLeft ? 'right' : 'left';
         if (lastWallJumpDirection === jumpDirection) {
           // jumpReleased = true; // ?
