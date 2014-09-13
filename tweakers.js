@@ -64,8 +64,8 @@
     });
 
     createButton('Reset Position', function() {
-      player.x = 128;
-      player.y = 768;
+      player.x = currentLevel.player[0];
+      player.y = currentLevel.player[1];
     });
   }
 

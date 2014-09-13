@@ -9,7 +9,7 @@ WebFontConfig = {
 };
 
 // Time to pause between levels
-var LEVELPAUSETIME = 7000;
+var LEVELPAUSETIME = 6000;
 
 var ANIMATIONSPEED = 60; // fps
 
@@ -26,7 +26,7 @@ var TIMETORUN = 26/60 * 1000;
 var GRAVITY = 1500;
 
 // The time between jumps
-var JUMPVELOCITY = 570;
+var JUMPVELOCITY = 600;
 var BOOSTVELOCITY = 670;
 var MAXBOOSTS = 1;
 
@@ -39,6 +39,7 @@ var VELOCITYDAMPING = 0.85;
 var map;
 var tileset;
 var foreground;
+var objects;
 var background;
 var player;
 var isRunning = false;
@@ -103,12 +104,13 @@ var animations = {
 var levels = [];
 
 levels[0] = {
-  player: [128, 768],
-  flag: [3840, 224],
+  player: [130, 838],
+  flag: [3984, 212],
   map: '1',
-  tiles: 'scifi',
+  tiles: 'vectorman',
   music: 'Bamboo Mill',
   facing: 'right',
+  par: 20.00,
   background: {
     name: 'city',
     width: 3188,
@@ -117,7 +119,7 @@ levels[0] = {
   setup: function() {}
 };
 
-var game = new Phaser.Game(1024, 768, Phaser.AUTO, 'vectorman');
+var game = new Phaser.Game(1024, 768, Phaser.CANVAS, 'vectorman');
 
 game.state.add('run', {
   preload: preload,
@@ -184,6 +186,7 @@ function nextLevel() {
   else {
     currentLevelIndex = 0;
   }
+
   loadLevel(currentLevelIndex);
 }
 
@@ -227,22 +230,13 @@ function create() {
   map = game.add.tilemap(currentLevel.map);
   map.addTilesetImage('tiles-'+currentLevel.tiles);
 
+  // Background layer
   background = map.createLayer('Background');
   background.resizeWorld();
 
-  foreground = map.createLayer('Foreground');
-  foreground.resizeWorld();
-
-  // Collide on everything in the foreground
-  map.setCollisionBetween(0, 1000, true, foreground);
-  game.physics.arcade.TILE_BIAS = 40;
-  // game.physics.arcade.gravity.y = GRAVITY; // Global gravity
-
-  // Game sprites
-  flag = game.add.sprite(0, 0, 'flag');
-  flag.animations.add('wave', spriteRange(0, 29), ANIMATIONSPEED, true);
-  flag.animations.play('wave');
-  game.physics.enable(flag, Phaser.Physics.ARCADE);
+  // Collision layer
+  objects = map.createLayer('Objects');
+  objects.resizeWorld();
 
   // Setup player
   player = game.add.sprite(128, 768, 'vectorman');
@@ -252,7 +246,22 @@ function create() {
   player.body.bounce.y = 0; // Don't bounce
   player.body.gravity.y = GRAVITY; // Be affected by gravity
   player.body.collideWorldBounds = true;
-  player.body.setSize(38, 50, 0, 39);
+  player.body.setSize(38, 50, 0, 40);
+
+  // Foreground layer
+  foreground = map.createLayer('Foreground');
+  foreground.resizeWorld();
+
+  // Collide on everything in the foreground
+  map.setCollisionByExclusion([0], true, objects);
+  game.physics.arcade.TILE_BIAS = 40;
+  // game.physics.arcade.gravity.y = GRAVITY; // Global gravity
+
+  // Game sprites
+  flag = game.add.sprite(0, 0, 'flag');
+  flag.animations.add('wave', spriteRange(0, 29), ANIMATIONSPEED, true);
+  flag.animations.play('wave');
+  game.physics.enable(flag, Phaser.Physics.ARCADE);
 
   setSpriteDirection(player, currentLevel.facing);
 
@@ -270,7 +279,7 @@ function create() {
   jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 
   // Store level start time
-  levelStartTime = Date.now();
+  levelStartTime = game.time.now;
 
   // Set initial positions
   player.x = currentLevel.player[0];
@@ -292,18 +301,8 @@ function create() {
   }
 
   if (window.location.hash.match('nomusic')) {
-    stopMusic();
+    game.sound.remove(music);
   }
-}
-
-function stopMusic() {
-  // Stop if it is already playing
-  music.stop();
-
-  // Stop if it hasn't played yet
-  music.onPlay.add(function() {
-    music.stop();
-  });
 }
 
 /**
@@ -378,8 +377,8 @@ function run(direction) {
 }
 
 function update() {
-  // Only apply physics to the foreground
-  game.physics.arcade.collide(player, foreground, collisionHandler);
+  // Only apply physics to the objects layer
+  game.physics.arcade.collide(player, objects, collisionHandler);
 
   // Reset velocity
   var headHit = player.body.blocked.up;
@@ -509,11 +508,33 @@ function flagCollisionHandler(ob1, obj2) {
   }
   levelComplete = true;
 
-  var levelTime = (Date.now() - levelStartTime) / 1000;
+  var levelTime = (game.time.now - levelStartTime) / 1000;
+
+  var message = 'level '+(currentLevelIndex+1);
+  var passed = levelTime < currentLevel.par;
+
+  message += ' ' + (passed ? 'passed' : 'failed') + '\n\n';
+  message += 'time: '+levelTime.toFixed(3)+'s\n\n'
+  message += Math.abs(currentLevel.par - levelTime).toFixed(3) + 's '+(passed ? 'under' : 'over')+' par\n\n';
+
+  var previousBestTime = levelTimes[currentLevelIndex];
+  if (!previousBestTime || levelTime < previousBestTime) {
+    message += 'new record!\n';
+
+    if (previousBestTime) {
+      message += (previousBestTime - levelTime).toFixed(3)+'s faster';
+    }
+  }
+  else {
+    message += 'best was '+(previousBestTime).toFixed(3)+'s';
+  }
+  console.log(message);
+
+  // Store score
+  levelTimes[currentLevelIndex] = Math.min(levelTimes[currentLevelIndex] || Infinity, levelTime);
 
   // Stop music
-  stopMusic();
-  // game.sound.remove(music);
+  game.sound.remove(music);
 
   // Play win sound
   playSound('yea');
@@ -524,8 +545,8 @@ function flagCollisionHandler(ob1, obj2) {
   player.body.velocity.x = 0;
   player.body.velocity.y = 0;
 
-  text = game.add.text(flag.x, flag.y, 'level complete\n'+levelTime.toFixed(2)+'s');
-  text.anchor.setTo(1);
+  text = game.add.text(game.camera.x + game.width/2, game.camera.y + game.height/2, message);
+  text.anchor.setTo(0.5);
 
   text.font = 'Revalia';
   text.fontSize = 60;
@@ -537,13 +558,8 @@ function flagCollisionHandler(ob1, obj2) {
   text.strokeThickness = 2;
   text.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
 
-  console.log('Level completed in %f seconds', levelTime);
-
-  // Store score
-  levelTimes[currentLevelIndex] = Math.min(levelTimes[currentLevelIndex] || Infinity, levelTime);
-
-  // Restart
-  setTimeout(restart, LEVELPAUSETIME);
+  // Restart or go to next level
+  setTimeout(passed ? nextLevel : restart, LEVELPAUSETIME);
 }
 
 function collisionHandler(obj1, obj2) {
