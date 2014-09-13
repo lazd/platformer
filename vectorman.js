@@ -10,6 +10,7 @@ WebFontConfig = {
 
 // Time to pause between levels
 var LEVELPAUSETIME = 6000;
+var LEVELREADYTIME = 1500;
 
 var ANIMATIONSPEED = 60; // fps
 
@@ -58,6 +59,8 @@ var levelText;
 var resetTimeout;
 var unpauseTimeout;
 var startText;
+var countDown;
+var countDownStart;
 
 // Player score
 var levelTimes = [];
@@ -246,14 +249,6 @@ function reset() {
 
   setSpriteDirection(player, currentLevel.facing);
 
-  // Temporary fix for Phaser #1190: isDown not reset when disabled
-  cursors.left.isDown = false;
-  cursors.right.isDown = false;
-
-  // Disable input
-  cursors.left.enabled = false;
-  cursors.right.enabled = false;
-
   // Text for starting the game
   startText = game.add.text(game.camera.x + game.width/2, game.camera.y + game.height/2);
   startText.anchor.setTo(0.5);
@@ -267,30 +262,15 @@ function reset() {
   startText.strokeThickness = 2;
   startText.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
 
-  startText.text = '3';
+  // Temporary fix for Phaser #1190: isDown not reset when disabled
+  cursors.left.isDown = false;
+  cursors.right.isDown = false;
 
-  // Re-use the resetTimeout so it's cleared automatically
-  resetTimeout = setTimeout(function() {
-    startText.text = '2';
+  // Disable input
+  cursors.left.enabled = false;
+  cursors.right.enabled = false;
 
-    resetTimeout = setTimeout(function() {
-      startText.text = '1';
-
-      resetTimeout = setTimeout(function() {
-        startText.text = 'Go!';
-        cursors.left.enabled = true;
-        cursors.right.enabled = true;
-
-        // Store level start time
-        levelStartTime = game.time.now;
-
-        resetTimeout = setTimeout(function() {
-          startText.destroy();
-          startText = null;
-        }, 500);
-      }, 500);
-    }, 500);
-  }, 500);
+  countDown = true;
 }
 
 function nextLevel() {
@@ -488,6 +468,32 @@ function run(direction) {
 }
 
 function update() {
+  if (countDown) {
+    if (!countDownStart) {
+      countDownStart = game.time.now;
+    }
+
+    var timeToStart = LEVELREADYTIME - (game.time.now - countDownStart);
+
+    if (timeToStart < - LEVELREADYTIME / 2) {
+      startText.destroy();
+      startText = null;
+      countDown = false;
+      countDownStart = 0;
+    }
+    else if (timeToStart < 0) {
+      startText.text = 'Go!';
+      cursors.left.enabled = true;
+      cursors.right.enabled = true;
+
+      // Store level start time
+      levelStartTime = game.time.now;
+    }
+    else {
+      startText.text = Math.ceil(timeToStart/1000 * 2);
+    }
+  }
+
   if (resetKey.isDown) {
     reset();
     return;
