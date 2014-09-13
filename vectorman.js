@@ -47,17 +47,23 @@ var mode = null;
 var facing = 'right';
 var runTimer = 0;
 var cursors;
-var jumpButton;
+var pauseKey;
+var resetKey;
+var jumpKey;
 var bg;
 var music;
 var audio;
 var flag;
-var currentLevel;
+var levelText;
+var resetTimeout;
+var unpauseTimeout;
+var startText;
 
 // Player score
 var levelTimes = [];
 
 // Level variables
+var currentLevel;
 var currentLevelIndex = 0; // The first level to load
 var levelComplete = false; // Whether the level has been beaten
 
@@ -110,7 +116,7 @@ levels[0] = {
   tiles: 'vectorman',
   music: 'Bamboo Mill',
   facing: 'right',
-  par: 20.00,
+  par: 16.00,
   background: {
     name: 'city',
     width: 3188,
@@ -175,11 +181,120 @@ function playSound(sound) {
   audio[sound].play();
 }
 
+// Full restart of the game
 function restart() {
   game.state.restart();
 }
 
+function pause() {
+  game.paused = true;
+
+  // Catch unpause
+  document.addEventListener('keydown', unpause);
+}
+
+function unpause() {
+  // Use a timeout so P can unpause the game
+  clearTimeout(unpauseTimeout);
+
+  unpauseTimeout = setTimeout(function() {
+    game.paused = false;
+  }, 100);
+
+  document.removeEventListener('keydown', unpause);
+}
+
+// Reset the current level
+function reset() {
+  // Stop automatic resets
+  clearTimeout(resetTimeout);
+
+  // Reset complete status
+  levelComplete = false;
+
+  // Reset physics
+  flag.body.velocity.x = 0;
+  flag.body.velocity.y = 0;
+  flag.body.gravity.y = 0;
+  flag.x = currentLevel.flag[0];
+  flag.y = currentLevel.flag[1];
+
+  // Set initial positions
+  player.body.velocity.x = 0;
+  player.body.velocity.y = 0;
+  player.x = currentLevel.player[0];
+  player.y = currentLevel.player[1];
+
+  mode = null;
+
+  if (music) {
+    game.sound.remove(music);
+  }
+
+  // Remove text
+  if (levelText) {
+    levelText.destroy();
+  }
+
+  if (startText) {
+    startText.destroy();
+  }
+
+  // Play music
+  music = game.add.audio(currentLevel.music);
+  music.play();
+
+  setSpriteDirection(player, currentLevel.facing);
+
+  // Temporary fix for Phaser #1190: isDown not reset when disabled
+  cursors.left.isDown = false;
+  cursors.right.isDown = false;
+
+  // Disable input
+  cursors.left.enabled = false;
+  cursors.right.enabled = false;
+
+  // Text for starting the game
+  startText = game.add.text(game.camera.x + game.width/2, game.camera.y + game.height/2);
+  startText.anchor.setTo(0.5);
+
+  startText.font = 'Revalia';
+  startText.fontSize = 60;
+
+  startText.fill = 'white';
+  startText.align = 'center';
+  startText.stroke = '#000000';
+  startText.strokeThickness = 2;
+  startText.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
+
+  startText.text = '3';
+
+  // Re-use the resetTimeout so it's cleared automatically
+  resetTimeout = setTimeout(function() {
+    startText.text = '2';
+
+    resetTimeout = setTimeout(function() {
+      startText.text = '1';
+
+      resetTimeout = setTimeout(function() {
+        startText.text = 'Go!';
+        cursors.left.enabled = true;
+        cursors.right.enabled = true;
+
+        // Store level start time
+        levelStartTime = game.time.now;
+
+        resetTimeout = setTimeout(function() {
+          startText.destroy();
+          startText = null;
+        }, 500);
+      }, 500);
+    }, 500);
+  }, 500);
+}
+
 function nextLevel() {
+  var previousLevelIndex = currentLevelIndex;
   if (currentLevelIndex < levels.length-1) {
     currentLevelIndex++;
   }
@@ -187,7 +302,14 @@ function nextLevel() {
     currentLevelIndex = 0;
   }
 
-  loadLevel(currentLevelIndex);
+  if (previousLevelIndex === currentLevelIndex) {
+    // Special case for when we have only one level
+    // Just reset
+    reset();
+  }
+  else {
+    loadLevel(currentLevelIndex);
+  }
 }
 
 function loadLevel(index) {
@@ -214,10 +336,6 @@ function create() {
   sounds.forEach(function(sound) {
     audio[sound.split('.')[0]] = game.add.audio(sound);
   });
-
-  // Play music
-  music = game.add.audio(currentLevel.music);
-  music.play();
 
   // Start physics simulation
   game.physics.startSystem(Phaser.Physics.ARCADE);
@@ -263,8 +381,6 @@ function create() {
   flag.animations.play('wave');
   game.physics.enable(flag, Phaser.Physics.ARCADE);
 
-  setSpriteDirection(player, currentLevel.facing);
-
   // Setup animations
   for (var animationName in animations) {
     var animationFrames = animations[animationName];
@@ -276,17 +392,12 @@ function create() {
 
   // Controls
   cursors = game.input.keyboard.createCursorKeys();
-  jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+  jumpKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+  pauseKey = game.input.keyboard.addKey(Phaser.Keyboard.P);
+  resetKey = game.input.keyboard.addKey(Phaser.Keyboard.R);
 
-  // Store level start time
-  levelStartTime = game.time.now;
-
-  // Set initial positions
-  player.x = currentLevel.player[0];
-  player.y = currentLevel.player[1];
-
-  flag.x = currentLevel.flag[0];
-  flag.y = currentLevel.flag[1];
+  // Start game
+  reset();
 
   if (typeof currentLevel.setup === 'function') {
     currentLevel.setup();
@@ -368,7 +479,7 @@ function run(direction) {
   }
 
   if (onFloor && mode === 'jump') {
-    // Reset mode if in jump to avoid getting stuck on the running animation instead of falling 
+    // Reset mode if in jump to avoid getting stuck on the running animation instead of falling
     mode = null;
   }
 
@@ -377,6 +488,21 @@ function run(direction) {
 }
 
 function update() {
+  if (resetKey.isDown) {
+    reset();
+    return;
+  }
+
+  if (pauseKey.isDown) {
+    pause();
+    return;
+  }
+
+  if (startText) {
+    startText.x = game.camera.x + game.width/2;
+    startText.y = game.camera.y + game.height/2;
+  }
+
   // Only apply physics to the objects layer
   game.physics.arcade.collide(player, objects, collisionHandler);
 
@@ -439,14 +565,14 @@ function update() {
     canBoost = true;
   }
 
-  if (jumpButton.isDown) {
+  if (jumpKey.isDown) {
     if (jumpReleased) {
       if (onFloor) {
         player.body.velocity.y = -1 * JUMPVELOCITY;
         mode = 'jump';
         player.animations.play('jump');
       }
-      else if (jumpButton.isDown && canBoost) {
+      else if (jumpKey.isDown && canBoost) {
         player.body.velocity.y = -1 * BOOSTVELOCITY;
         boostCount++;
         player.animations.stop();
@@ -528,6 +654,7 @@ function flagCollisionHandler(ob1, obj2) {
   else {
     message += 'best was '+(previousBestTime).toFixed(3)+'s';
   }
+
   console.log(message);
 
   // Store score
@@ -542,24 +669,26 @@ function flagCollisionHandler(ob1, obj2) {
 
   // Give the flag gravity so it falls
   flag.body.gravity.y = GRAVITY;
+
+  // Stop the player
   player.body.velocity.x = 0;
   player.body.velocity.y = 0;
 
-  text = game.add.text(game.camera.x + game.width/2, game.camera.y + game.height/2, message);
-  text.anchor.setTo(0.5);
+  levelText = game.add.text(game.camera.x + game.width/2, game.camera.y + game.height/2, message);
+  levelText.anchor.setTo(0.5);
 
-  text.font = 'Revalia';
-  text.fontSize = 60;
+  levelText.font = 'Revalia';
+  levelText.fontSize = 60;
 
-  text.fill = 'white';
+  levelText.fill = 'white';
 
-  text.align = 'center';
-  text.stroke = '#000000';
-  text.strokeThickness = 2;
-  text.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
+  levelText.align = 'center';
+  levelText.stroke = '#000000';
+  levelText.strokeThickness = 2;
+  levelText.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
 
   // Restart or go to next level
-  setTimeout(passed ? nextLevel : restart, LEVELPAUSETIME);
+  resetTimeout = setTimeout(passed ? nextLevel : reset, LEVELPAUSETIME);
 }
 
 function collisionHandler(obj1, obj2) {
