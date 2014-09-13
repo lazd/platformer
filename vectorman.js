@@ -485,6 +485,7 @@ function update() {
       startText = null;
       countDown = false;
       countDownStart = 0;
+      runDisabled = false; // In case we pause during the countdown
     }
     else if (timeToStart < 0) {
       startText.text = 'Go!';
