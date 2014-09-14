@@ -136,7 +136,7 @@ levels[0] = {
   setup: function() {}
 };
 
-var game = new Phaser.Game(1024, 768, Phaser.CANVAS, 'vectorman');
+var game = new Phaser.Game(Math.min(1024, window.innerWidth), Math.min(768, window.innerHeight), Phaser.CANVAS, 'vectorman');
 
 game.state.add('run', {
   preload: preload,
@@ -158,6 +158,11 @@ function newGame() {
 
 function preload() {
   game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
+
+  game.load.image('button-left', 'assets/sprites/button-left.png');
+  game.load.image('button-right', 'assets/sprites/button-right.png');
+  game.load.image('button-down', 'assets/sprites/button-down.png');
+  game.load.image('button-circle', 'assets/sprites/button-circle.png');
 
   for (var name in levels) {
     var level = levels[name];
@@ -379,6 +384,9 @@ function create() {
   pauseKey = game.input.keyboard.addKey(Phaser.Keyboard.P);
   resetKey = game.input.keyboard.addKey(Phaser.Keyboard.R);
 
+  // Touch controls
+  // game.input.multiInputOverride = Phaser.Input.TOUCH_OVERRIDES_MOUSE;
+
   // Start game
   reset();
 
@@ -386,6 +394,107 @@ function create() {
     currentLevel.setup();
   }
 
+  buttons = game.add.group();
+  buttons.alpha = 0.33;
+  buttons.visible = true;
+
+  var buttonXStart = 64;
+  var buttonXEnd = game.width - (64);
+  var buttonY = game.height - (64 + 32);
+  var buttonWidth = 96;
+  var buttonSpacing = buttonWidth + 32;
+
+  addButton('button-left', buttonXStart, buttonY, function() {
+    cursors.left.isDown = true;
+  }, function() {
+    cursors.left.isDown = false;
+  });
+
+  addButton('button-right', buttonXStart + buttonSpacing, buttonY, function() {
+    cursors.right.isDown = true;
+  }, function() {
+    cursors.right.isDown = false;
+  });
+
+  addButton('button-circle', buttonXEnd - buttonWidth, buttonY, function() {
+    jumpKey.isDown = true;
+  }, function() {
+    jumpKey.isDown = false;
+  });
+
+  document.addEventListener('touchstart', function(event) {
+    for (var i = 0; i < event.touches.length; i++) {
+      var touch = event.touches[i];
+      var x = touch.clientX - game.canvas.offsetLeft;
+      var y = touch.clientY - game.canvas.offsetTop;
+
+      onTouchStart({
+        x: x,
+        y: y,
+        touch: touch.identifier
+      });
+    }
+  });
+
+  document.addEventListener('touchend', function(event) {
+    for (var i = 0; i < event.changedTouches.length; i++) {
+      var touch = event.changedTouches[i];
+      var x = touch.clientX - game.canvas.offsetLeft;
+      var y = touch.clientY - game.canvas.offsetTop;
+
+      onTouchEnd({
+        x: x,
+        y: y,
+        touch: touch.identifier
+      });
+    }
+  });
+
+  setDebug();
+}
+
+function onTouchEnd(event) {
+  var x = event.x;
+  var y = event.y;
+  var touch = event.touch;
+
+  for (var i = 0; i < buttons.children.length; i++) {
+    var button = buttons.children[i];
+    if (button.touch === touch) {
+      button.onUp();
+    }
+  }
+}
+
+function onTouchStart(event) {
+  var x = event.x;
+  var y = event.y;
+  var touch = event.touch;
+
+  for (var i = 0; i < buttons.children.length; i++) {
+    var button = buttons.children[i];
+    if (x > button.x - game.camera.x &&
+        x < button.x - game.camera.x + button.width &&
+        y > button.y - game.camera.y &&
+        y < button.y - game.camera.y + button.height) {
+      button.onDown();
+      button.touch = touch;
+    }
+  }
+}
+
+function addButton(sprite, x, y, onDown, onUp) {
+  var button = game.add.sprite(0, 0, sprite);
+  button.fixedToCamera = true;
+  button.cameraOffset.x = x;
+  button.cameraOffset.y = y;
+  button.onDown = onDown;
+  button.onUp = onUp;
+  buttons.add(button);
+  return button;
+}
+
+function setDebug() {
   if (window.location.hash.match('tweak')) {
     tweak();
   }
