@@ -428,11 +428,7 @@ function create() {
       var x = touch.clientX - game.canvas.offsetLeft;
       var y = touch.clientY - game.canvas.offsetTop;
 
-      onTouchStart({
-        x: x,
-        y: y,
-        touch: touch.identifier
-      });
+      onTouchStart(x, y, touch.identifier);
     }
   });
 
@@ -442,35 +438,23 @@ function create() {
       var x = touch.clientX - game.canvas.offsetLeft;
       var y = touch.clientY - game.canvas.offsetTop;
 
-      onTouchEnd({
-        x: x,
-        y: y,
-        touch: touch.identifier
-      });
+      onTouchEnd(x, y, touch.identifier);
     }
   });
 
   setDebug();
 }
 
-function onTouchEnd(event) {
-  var x = event.x;
-  var y = event.y;
-  var touch = event.touch;
-
+function onTouchEnd(x, y, touchID) {
   for (var i = 0; i < buttons.children.length; i++) {
     var button = buttons.children[i];
-    if (button.touch === touch) {
+    if (button.touchID === touchID) {
       button.onUp();
     }
   }
 }
 
-function onTouchStart(event) {
-  var x = event.x;
-  var y = event.y;
-  var touch = event.touch;
-
+function onTouchStart(x, y, touchID) {
   for (var i = 0; i < buttons.children.length; i++) {
     var button = buttons.children[i];
     if (x > button.x - game.camera.x &&
@@ -478,7 +462,7 @@ function onTouchStart(event) {
         y > button.y - game.camera.y &&
         y < button.y - game.camera.y + button.height) {
       button.onDown();
-      button.touch = touch;
+      button.touchID = touchID;
     }
   }
 }
