@@ -263,6 +263,10 @@ function reset() {
     });
   }
 
+  if (startText) {
+    startText.destroy();
+  }
+
   // Play music
   music = game.add.audio(currentLevel.music);
   music.play();
