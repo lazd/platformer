@@ -130,7 +130,8 @@ levels[0] = {
   setup: function() {}
 };
 
-var game = new Phaser.Game(Math.min(1024, window.innerWidth), Math.min(768, window.innerHeight), Phaser.CANVAS, 'vectorman');
+var PIXELRATIO = window.devicePixelRatio || 1;
+var game = new Phaser.Game(Math.min(1024, window.innerWidth) * PIXELRATIO, Math.min(768, window.innerHeight) * PIXELRATIO, Phaser.CANVAS, 'vectorman');
 
 game.state.add('run', {
   preload: preload,
@@ -258,8 +259,10 @@ function reset() {
   setSpriteDirection(player, currentLevel.facing);
 
   // Text for starting the game
-  startText = game.add.text(game.width/2, game.height/2);
+  startText = game.add.text(0, 0);
   startText.fixedToCamera = true;
+  startText.cameraOffset.x = game.camera.width/2;
+  startText.cameraOffset.y = game.camera.height/2;
   startText.anchor.setTo(0.5, 0.5);
 
   startText.font = FONT;
@@ -324,6 +327,13 @@ function create() {
   // Start physics simulation
   game.physics.startSystem(Phaser.Physics.P2JS);
   game.physics.p2.gravity.y = GRAVITY;
+
+  // Needed for retina?
+  game.scale.maxWidth = Math.round(game.canvas.width / PIXELRATIO);
+  game.scale.maxHeight = Math.round(game.canvas.height / PIXELRATIO);
+  game.scale.minWidth = Math.round(game.canvas.width / PIXELRATIO);
+  game.scale.minHeight = Math.round(game.canvas.height / PIXELRATIO);
+  game.scale.refresh();
 
   // Same as bottom of background
   game.stage.backgroundColor = '#261e11';
@@ -397,11 +407,11 @@ function create() {
 
     buttons.visible = true;
 
-    var buttonXStart = 32;
-    var buttonXEnd = game.width - 32;
-    var buttonY = game.height - 128;
-    var buttonWidth = 96;
-    var buttonSpacing = buttonWidth + 24;
+    var buttonXStart = 32  * PIXELRATIO;
+    var buttonXEnd = game.width - 32  * PIXELRATIO;
+    var buttonY = game.height - 128  * PIXELRATIO;
+    var buttonWidth = 96  * PIXELRATIO;
+    var buttonSpacing = buttonWidth + 24  * PIXELRATIO;
 
     addButton('button-left', buttonXStart, buttonY, function() {
       cursors.left.isDown = true;
@@ -428,13 +438,13 @@ function create() {
     });
 
     // CocoonJS fix: Doesn't like to draw the last sprite added
-    this.game.add.sprite(0,0,'');
+    this.game.add.sprite(0, 0, '');
 
     document.addEventListener('touchstart', function(event) {
       for (var i = 0; i < event.touches.length; i++) {
         var touch = event.touches[i];
-        var x = touch.clientX - game.canvas.offsetLeft;
-        var y = touch.clientY - game.canvas.offsetTop;
+        var x = touch.clientX * PIXELRATIO - game.canvas.offsetLeft;
+        var y = touch.clientY * PIXELRATIO - game.canvas.offsetTop;
 
         onTouchStart(x, y, touch.identifier);
       }
@@ -443,8 +453,8 @@ function create() {
     document.addEventListener('touchend', function(event) {
       for (var i = 0; i < event.changedTouches.length; i++) {
         var touch = event.changedTouches[i];
-        var x = touch.clientX - game.canvas.offsetLeft;
-        var y = touch.clientY - game.canvas.offsetTop;
+        var x = touch.clientX * PIXELRATIO - game.canvas.offsetLeft;
+        var y = touch.clientY * PIXELRATIO - game.canvas.offsetTop;
 
         onTouchEnd(x, y, touch.identifier);
       }
@@ -476,6 +486,11 @@ function onTouchStart(x, y, touchID) {
 
 function addButton(sprite, x, y, onDown, onUp) {
   var button = game.add.sprite(0, 0, sprite);
+
+  if (PIXELRATIO === 1) {
+    button.scale.setTo(0.5);
+  }
+
   button.fixedToCamera = true;
   button.cameraOffset.x = x;
   button.cameraOffset.y = y;
@@ -850,7 +865,7 @@ function handleLevelComplete() {
 
   levelText = game.add.text(game.width/2, game.height/2, message);
   levelText.fixedToCamera = true;
-  levelText.anchor.setTo(0.5);
+  levelText.anchor.setTo(0.5, 0.5);
 
   levelText.font = FONT;
   levelText.fontSize = 60;
@@ -861,6 +876,8 @@ function handleLevelComplete() {
   levelText.stroke = '#000000';
   levelText.strokeThickness = 2;
   levelText.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
+
+  this.game.add.sprite(0, 0, '');
 
   // Restart or go to next level
   resetTimeout = setTimeout(passed ? nextLevel : reset, LEVELPAUSETIME);
