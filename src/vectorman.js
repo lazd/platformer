@@ -16,8 +16,6 @@ var TIMETORUN = 26/60 * 1000;
 // World gravity
 var GRAVITY = 1500;
 
-var FONT = 'Gill Sans';
-
 // The time between jumps
 var JUMPVELOCITY = 600;
 var BOOSTVELOCITY = 670;
@@ -29,6 +27,10 @@ var RUNFULLSPEED = 400;
 
 var VELOCITYDAMPING = 0.85;
 var MAXWALLJUMPVELOCITY = 200;
+
+// Text
+var FONT = 'Gill Sans';
+var LINEHEIGHT = 85;
 
 var map;
 var tileset;
@@ -48,13 +50,16 @@ var bg;
 var music;
 var audio;
 var flag;
-var levelText;
 var resetTimeout;
 var unpauseTimeout;
 var startText;
 var countDown;
 var countDownStart;
 var touches;
+
+// Text instances used by the current level
+// These will be killed on reset
+var levelText = [];
 
 // Player score
 var levelTimes = [];
@@ -245,11 +250,9 @@ function reset() {
 
   // Remove text
   if (levelText) {
-    levelText.destroy();
-  }
-
-  if (startText) {
-    startText.destroy();
+    levelText.forEach(function(text) {
+      text.destroy();
+    });
   }
 
   // Play music
@@ -259,20 +262,7 @@ function reset() {
   setSpriteDirection(player, currentLevel.facing);
 
   // Text for starting the game
-  startText = game.add.text(0, 0);
-  startText.fixedToCamera = true;
-  startText.cameraOffset.x = game.camera.width/2;
-  startText.cameraOffset.y = game.camera.height/2;
-  startText.anchor.setTo(0.5, 0.5);
-
-  startText.font = FONT;
-  startText.fontSize = 60;
-
-  startText.fill = 'white';
-  startText.align = 'center';
-  startText.stroke = '#000000';
-  startText.strokeThickness = 2;
-  startText.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
+  startText = drawText();
 
   // Disable input
   runDisabled = true;
@@ -823,6 +813,28 @@ function update() {
   }
 }
 
+function drawText(text, x, y, fontSize, anchorX, anchorY) {
+  var text = game.add.text(0, 0, text);
+  text.fixedToCamera = true;
+  text.fixedToCamera = true;
+  text.cameraOffset.x = x != undefined ? x : game.camera.width / 2;
+  text.cameraOffset.y = y != undefined ? y : game.camera.height / 2;
+  text.anchor.setTo(anchorX != undefined ? anchorX : 0.5, anchorY != undefined ? anchorY : 0.5);
+
+  text.font = FONT;
+  text.fontSize = fontSize || 60;
+
+  text.fill = 'white';
+  text.align = 'center';
+  text.stroke = 'black';
+  text.strokeThickness = 2;
+  text.setShadow(4, 4, 'rgba(0,0,0,0.5)', 4);
+
+  this.game.add.sprite(0, 0, '');
+
+  return text;
+}
+
 function handleLevelComplete() {
   if (levelComplete) {
     return;
@@ -864,22 +876,12 @@ function handleLevelComplete() {
 
   // Stop the player
   // player.body.setZeroVelocity();
-
-  levelText = game.add.text(game.width/2, game.height/2, message);
-  levelText.fixedToCamera = true;
-  levelText.anchor.setTo(0.5, 0.5);
-
-  levelText.font = FONT;
-  levelText.fontSize = 60;
-
-  levelText.fill = 'white';
-
-  levelText.align = 'center';
-  levelText.stroke = '#000000';
-  levelText.strokeThickness = 2;
-  levelText.setShadow(5, 5, 'rgba(0,0,0,0.5)', 5);
-
-  this.game.add.sprite(0, 0, '');
+  var messageParts = message.split('\n');
+  var startY = game.camera.height / 2 - LINEHEIGHT * messageParts.length / 2;
+  messageParts.forEach(function(text, index) {
+    var text = drawText(text, null, startY + (index * LINEHEIGHT), null, 0.5, 0);
+    levelText.push(text);
+  });
 
   // Restart or go to next level
   resetTimeout = setTimeout(passed ? nextLevel : reset, LEVELPAUSETIME);
