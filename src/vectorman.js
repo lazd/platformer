@@ -745,7 +745,6 @@ function update() {
         }
         lastWallJumpDirection = jumpDirection;
 
-        player.body.velocity.y = -1 * JUMPVELOCITY;
         var xVeloc = JUMPVELOCITY;
 
         if (onWallLeft) {
@@ -755,6 +754,9 @@ function update() {
           facing = 'left';
           xVeloc *= -1;
         }
+
+        player.body.velocity.y = -1 * JUMPVELOCITY;
+        player.body.velocity.x = xVeloc;
 
         mode = 'jump';
         player.animations.stop();
