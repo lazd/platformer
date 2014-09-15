@@ -185,7 +185,10 @@ function spriteRange(start, end) {
   return array;
 }
 
-function playSound(sound) {
+function playSound(sound, noClobber) {
+  if (noClobber && audio[sound].isPlaying) {
+    return;
+  }
   audio[sound].play();
 }
 
@@ -385,55 +388,58 @@ function create() {
     currentLevel.setup();
   }
 
-  buttons = game.add.group();
-  buttons.alpha = 0.33;
-  buttons.visible = true;
 
-  var buttonXStart = 64;
-  var buttonXEnd = game.width - (64);
-  var buttonY = game.height - (64 + 32);
-  var buttonWidth = 96;
-  var buttonSpacing = buttonWidth + 32;
+  // Only show buttons on touchscreen
+  if ('ontouchstart' in window) {
+    buttons = game.add.group();
+    buttons.alpha = 0.50;
 
-  addButton('button-left', buttonXStart, buttonY, function() {
-    cursors.left.isDown = true;
-  }, function() {
-    cursors.left.isDown = false;
-  });
+    buttons.visible = true;
 
-  addButton('button-right', buttonXStart + buttonSpacing, buttonY, function() {
-    cursors.right.isDown = true;
-  }, function() {
-    cursors.right.isDown = false;
-  });
+    var buttonXStart = 64;
+    var buttonXEnd = game.width - (64);
+    var buttonY = game.height - (64 + 32);
+    var buttonWidth = 96;
+    var buttonSpacing = buttonWidth + 32;
 
-  addButton('button-circle', buttonXEnd - buttonWidth, buttonY, function() {
-    jumpKey.isDown = true;
-  }, function() {
-    jumpKey.isDown = false;
-  });
+    addButton('button-left', buttonXStart, buttonY, function() {
+      cursors.left.isDown = true;
+    }, function() {
+      cursors.left.isDown = false;
+    });
 
-  document.addEventListener('touchstart', function(event) {
-    for (var i = 0; i < event.touches.length; i++) {
-      var touch = event.touches[i];
-      var x = touch.clientX - game.canvas.offsetLeft;
-      var y = touch.clientY - game.canvas.offsetTop;
+    addButton('button-right', buttonXStart + buttonSpacing, buttonY, function() {
+      cursors.right.isDown = true;
+    }, function() {
+      cursors.right.isDown = false;
+    });
 
-      onTouchStart(x, y, touch.identifier);
-    }
-  });
+    addButton('button-circle', buttonXEnd - buttonWidth, buttonY, function() {
+      jumpKey.isDown = true;
+    }, function() {
+      jumpKey.isDown = false;
+    });
 
-  document.addEventListener('touchend', function(event) {
-    for (var i = 0; i < event.changedTouches.length; i++) {
-      var touch = event.changedTouches[i];
-      var x = touch.clientX - game.canvas.offsetLeft;
-      var y = touch.clientY - game.canvas.offsetTop;
+    document.addEventListener('touchstart', function(event) {
+      for (var i = 0; i < event.touches.length; i++) {
+        var touch = event.touches[i];
+        var x = touch.clientX - game.canvas.offsetLeft;
+        var y = touch.clientY - game.canvas.offsetTop;
 
-      onTouchEnd(x, y, touch.identifier);
-    }
-  });
+        onTouchStart(x, y, touch.identifier);
+      }
+    });
 
-  setDebug();
+    document.addEventListener('touchend', function(event) {
+      for (var i = 0; i < event.changedTouches.length; i++) {
+        var touch = event.changedTouches[i];
+        var x = touch.clientX - game.canvas.offsetLeft;
+        var y = touch.clientY - game.canvas.offsetTop;
+
+        onTouchEnd(x, y, touch.identifier);
+      }
+    });
+  }
 }
 
 function onTouchEnd(x, y, touchID) {
@@ -467,22 +473,6 @@ function addButton(sprite, x, y, onDown, onUp) {
   button.onUp = onUp;
   buttons.add(button);
   return button;
-}
-
-function setDebug() {
-  if (window.location && window.location.hash) {
-    if (window.location.hash.match('tweak')) {
-      tweak();
-    }
-
-    if (window.location.hash.match('debug')) {
-      debug();
-    }
-
-    if (window.location.hash.match('nomusic')) {
-      game.sound.remove(music);
-    }
-  }
 }
 
 /**
@@ -661,7 +651,7 @@ function update() {
   }
 
   if (headHit) {
-    playSound('head bump');
+    playSound('head bump', true);
   }
 
   if (mode === 'jump' && onFloor) {

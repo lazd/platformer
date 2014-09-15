@@ -31,6 +31,10 @@
     player.body.debug = true; // Show collision box
   }
 
+  function stopMusic() {
+    game.sound.remove(music);
+  }
+
   function tweak() {
     $ = document.querySelector.bind(document);
     create = document.createElement.bind(document);
@@ -74,4 +78,15 @@
 
   window.tweak = tweak;
   window.debug = debug;
+  window.stopMusic = stopMusic;
+
+  if (window.location && window.location.hash) {
+    if (window.location.hash.match('tweak')) {
+      tweak();
+    }
+
+    if (window.location.hash.match('debug')) {
+      debug();
+    }
+  }
 }());
