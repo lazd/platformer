@@ -1,6 +1,6 @@
 (function() {
-  var $ = document.querySelector.bind(document);
-  var create = document.createElement.bind(document);
+  var $;
+  var create;
   var tweakers;
 
   function createSpinner(name, initial, cb) {
@@ -32,6 +32,8 @@
   }
 
   function tweak() {
+    $ = document.querySelector.bind(document);
+    create = document.createElement.bind(document);
     tweakers = create('div');
     tweakers.className = 'Tweakers';
     document.body.appendChild(tweakers);

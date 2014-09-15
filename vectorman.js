@@ -1,13 +1,3 @@
-// Google WebFonts
-WebFontConfig = {
-    active: function() {},
-
-    google: {
-      // List of fonts to load
-      families: ['Revalia']
-    }
-};
-
 // Time to pause between levels
 var LEVELPAUSETIME = 6000;
 var LEVELREADYTIME = 1500;
@@ -25,6 +15,8 @@ var TIMETORUN = 26/60 * 1000;
 
 // World gravity
 var GRAVITY = 1500;
+
+var FONT = 'Gill Sans';
 
 // The time between jumps
 var JUMPVELOCITY = 600;
@@ -100,11 +92,11 @@ var lastWallJumpDirection;
 
 // All sounds to load
 var sounds = [
-  'head bump.wav',
-  'land.wav',
-  'boost.wav',
-  'yea.wav',
-  'level complete.mp3'
+  'head bump',
+  'land',
+  'boost',
+  'yea',
+  'level complete'
 ];
 
 // 1 based frame numbers of animations
@@ -159,8 +151,6 @@ function newGame() {
 }
 
 function preload() {
-  game.load.script('webfont', '//ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js');
-
   game.load.image('button-left', 'assets/sprites/button-left.png');
   game.load.image('button-right', 'assets/sprites/button-right.png');
   game.load.image('button-down', 'assets/sprites/button-down.png');
@@ -172,7 +162,7 @@ function preload() {
     game.load.image('tiles-'+level.tiles, 'assets/tiles/'+level.tiles+'.png');
     game.load.image('background-'+level.background.name, 'assets/backgrounds/'+level.background.name+'.png');
 
-    game.load.audio(level.music, ['assets/music/'+level.music+'.ogg', 'assets/music/'+level.music+'.mp3']);
+    game.load.audio(level.music, 'assets/music/'+level.music+'.mp3');
   }
 
   game.load.spritesheet('vectorman', 'assets/sprites/vectorman.png', 100, 100);
@@ -180,7 +170,7 @@ function preload() {
 
   // Load each sound
   sounds.forEach(function(sound) {
-    game.load.audio(sound, 'assets/sound/'+sound);
+    game.load.audio(sound, 'assets/sound/'+sound+'.mp3');
   });
 }
 
@@ -263,11 +253,11 @@ function reset() {
   setSpriteDirection(player, currentLevel.facing);
 
   // Text for starting the game
-  startText = game.add.text(game.camera.x + game.width/2, game.camera.y + game.height/2);
+  startText = game.add.text(game.width/2, game.height/2);
   startText.fixedToCamera = true;
-  startText.anchor.setTo(0.5);
+  startText.anchor.setTo(0.5, 0.5);
 
-  startText.font = 'Revalia';
+  startText.font = FONT;
   startText.fontSize = 60;
 
   startText.fill = 'white';
@@ -367,7 +357,6 @@ function create() {
   flag.body.setRectangleFromSprite(flag); // Size of sprite
   flag.body.fixedRotation = true; // Never rotate
   flag.body.kinematic = true; // Immovable
-  flag.anchor.setTo(0, 0);
 
   // Check for collisions with the flag
   game.physics.p2.setPostBroadphaseCallback(checkFlagContact, this);
@@ -481,16 +470,18 @@ function addButton(sprite, x, y, onDown, onUp) {
 }
 
 function setDebug() {
-  if (window.location.hash.match('tweak')) {
-    tweak();
-  }
+  if (window.location && window.location.hash) {
+    if (window.location.hash.match('tweak')) {
+      tweak();
+    }
 
-  if (window.location.hash.match('debug')) {
-    debug();
-  }
+    if (window.location.hash.match('debug')) {
+      debug();
+    }
 
-  if (window.location.hash.match('nomusic')) {
-    game.sound.remove(music);
+    if (window.location.hash.match('nomusic')) {
+      game.sound.remove(music);
+    }
   }
 }
 
@@ -660,11 +651,6 @@ function update() {
     return;
   }
 
-  if (startText) {
-    startText.x = game.camera.x + game.width/2;
-    startText.y = game.camera.y + game.height/2;
-  }
-
   var headHit = touches.up;
   var onFloor = touches.down;
   var onWallLeft = touches.left;
@@ -827,9 +813,9 @@ function handleLevelComplete() {
   var message = 'level '+(currentLevelIndex+1);
   var passed = levelTime < currentLevel.par;
 
-  message += ' ' + (passed ? 'passed' : 'failed') + '\n\n';
-  message += 'time: '+levelTime.toFixed(3)+'s\n\n'
-  message += Math.abs(currentLevel.par - levelTime).toFixed(3) + 's '+(passed ? 'under' : 'over')+' par\n\n';
+  message += ' ' + (passed ? 'passed' : 'failed') + '\n';
+  message += 'time: '+levelTime.toFixed(3)+'s\n'
+  message += Math.abs(currentLevel.par - levelTime).toFixed(3) + 's '+(passed ? 'under' : 'over')+' par\n';
 
   var previousBestTime = levelTimes[currentLevelIndex];
   if (!previousBestTime || levelTime < previousBestTime) {
@@ -858,11 +844,11 @@ function handleLevelComplete() {
   // Stop the player
   // player.body.setZeroVelocity();
 
-  levelText = game.add.text(game.camera.x + game.width/2, game.camera.y + game.height/2, message);
+  levelText = game.add.text(game.width/2, game.height/2, message);
   levelText.fixedToCamera = true;
-  levelText.anchor.setTo(0.5, 1);
+  levelText.anchor.setTo(0.5);
 
-  levelText.font = 'Revalia';
+  levelText.font = FONT;
   levelText.fontSize = 60;
 
   levelText.fill = 'white';
