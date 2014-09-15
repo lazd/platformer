@@ -136,7 +136,15 @@ levels[0] = {
 };
 
 var PIXELRATIO = window.devicePixelRatio || 1;
-var game = new Phaser.Game(Math.min(1024, window.innerWidth) * PIXELRATIO, Math.min(768, window.innerHeight) * PIXELRATIO, Phaser.CANVAS, '');
+var width = Math.min(1024, window.innerWidth) * PIXELRATIO;
+var height = Math.min(768, window.innerHeight) * PIXELRATIO;
+if (window.innerWidth >= 1024 && PIXELRATIO >= 2) {
+  width = Math.round(width / 2);
+  height = Math.round(height / 2);
+  PIXELRATIO = 1;
+}
+
+var game = new Phaser.Game(width, height, Phaser.CANVAS, '');
 
 game.state.add('run', {
   preload: preload,
