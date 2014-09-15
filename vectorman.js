@@ -664,6 +664,11 @@ function update() {
     playSound('head bump');
   }
 
+  if (mode === 'jump' && onFloor) {
+    // Do this in case we start runnning before we land
+    playSound('land');
+  }
+
   if (!runDisabled && cursors.left.isDown) {
     run('left');
   }
@@ -677,7 +682,6 @@ function update() {
       // If we were jumping, but we landed on the floor, show the landing animation
       if (mode === 'jump') {
         mode = 'land';
-        playSound('land');
         player.animations.play('land');
         landStart = game.time.now;
       }
