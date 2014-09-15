@@ -36,6 +36,7 @@ var RUNSTARTSPEED = 200;
 var RUNFULLSPEED = 400;
 
 var VELOCITYDAMPING = 0.85;
+var MAXWALLJUMPVELOCITY = 200;
 
 var map;
 var tileset;
@@ -61,6 +62,7 @@ var unpauseTimeout;
 var startText;
 var countDown;
 var countDownStart;
+var touches;
 
 // Player score
 var levelTimes = [];
@@ -229,17 +231,15 @@ function reset() {
   levelComplete = false;
 
   // Reset physics
-  flag.body.velocity.x = 0;
-  flag.body.velocity.y = 0;
-  flag.body.gravity.y = 0;
-  flag.x = currentLevel.flag[0];
-  flag.y = currentLevel.flag[1];
+  // flag.body.mass = 0; // Make it stay where it is
+  flag.body.setZeroVelocity();
+  flag.body.x = currentLevel.flag[0];
+  flag.body.y = currentLevel.flag[1];
 
   // Set initial positions
-  player.body.velocity.x = 0;
-  player.body.velocity.y = 0;
-  player.x = currentLevel.player[0];
-  player.y = currentLevel.player[1];
+  player.body.setZeroVelocity();
+  player.body.x = currentLevel.player[0];
+  player.body.y = currentLevel.player[1];
 
   mode = null;
 
@@ -264,6 +264,7 @@ function reset() {
 
   // Text for starting the game
   startText = game.add.text(game.camera.x + game.width/2, game.camera.y + game.height/2);
+  startText.fixedToCamera = true;
   startText.anchor.setTo(0.5);
 
   startText.font = 'Revalia';
@@ -326,7 +327,8 @@ function create() {
   });
 
   // Start physics simulation
-  game.physics.startSystem(Phaser.Physics.ARCADE);
+  game.physics.startSystem(Phaser.Physics.P2JS);
+  game.physics.p2.gravity.y = GRAVITY;
 
   // Same as bottom of background
   game.stage.backgroundColor = '#261e11';
@@ -341,38 +343,37 @@ function create() {
   background.resizeWorld();
 
   // Collision layer
-  objects = map.createLayer('Objects');
-  objects.resizeWorld();
+  objects = game.physics.p2.convertCollisionObjects(map, 'Objects');
 
   // Setup player
-  player = game.add.sprite(128, 768, 'vectorman');
+  player = game.add.sprite(128, 128, 'vectorman');
   player.anchor.setTo(0.5, 0); // So it flips around its middle
-  game.physics.enable(player, Phaser.Physics.ARCADE);
+  // game.physics.enable(player, Phaser.Physics.ARCADE);
+  game.physics.p2.enable(player);
 
-  player.body.bounce.y = 0; // Don't bounce
-  player.body.gravity.y = GRAVITY; // Be affected by gravity
-  player.body.collideWorldBounds = true;
-  player.body.setSize(38, 50, 0, 40);
+  player.body.fixedRotation = true; // Never rotate
+  // player.body.setCircle(32, 0, 16); // Circular collision body
+  player.body.setRectangle(42, 50, 0, 16); // Rectangular collision body
 
   // Foreground layer
   foreground = map.createLayer('Foreground');
   foreground.resizeWorld();
 
-  // Collide on everything in the foreground
-  map.setCollisionByExclusion([0], true, objects);
-  game.physics.arcade.TILE_BIAS = 40;
-  // game.physics.arcade.gravity.y = GRAVITY; // Global gravity
-
   // Game sprites
-  flag = game.add.sprite(0, 0, 'flag');
+  flag = game.add.sprite(128, 128, 'flag');
   flag.animations.add('wave', spriteRange(0, 29), ANIMATIONSPEED, true);
   flag.animations.play('wave');
-  game.physics.enable(flag, Phaser.Physics.ARCADE);
+  game.physics.p2.enable(flag);
+  flag.body.setRectangleFromSprite(flag); // Size of sprite
+  flag.body.fixedRotation = true; // Never rotate
+  flag.body.kinematic = true; // Immovable
+
+  // Check for collisions with the flag
+  game.physics.p2.setPostBroadphaseCallback(checkFlagContact, this);
 
   // Setup animations
   for (var animationName in animations) {
     var animationFrames = animations[animationName];
-    // console.log('Animation %s runs from %d to %d', animationName, animationFrames[0]-1, animationFrames[1]-1);
     player.animations.add(animationName, spriteRange(animationFrames[0]-1, animationFrames[1]-1), ANIMATIONSPEED, animationFrames[2]);
   }
 
@@ -385,7 +386,7 @@ function create() {
   resetKey = game.input.keyboard.addKey(Phaser.Keyboard.R);
 
   // Touch controls
-  // game.input.multiInputOverride = Phaser.Input.TOUCH_OVERRIDES_MOUSE;
+  game.input.multiInputOverride = Phaser.Input.TOUCH_OVERRIDES_MOUSE;
 
   // Start game
   reset();
@@ -537,7 +538,7 @@ function run(direction) {
     additionalRunVelocity = (1 - (runTimer - game.time.now) / TIMETORUN) * (RUNFULLSPEED - RUNSTARTSPEED);
   }
 
-  var onFloor = player.body.onFloor();
+  var onFloor = touches.down;
 
   if (onFloor) {
     // Switch the animation
@@ -565,7 +566,63 @@ function run(direction) {
   player.body.velocity.x = (direction === 'left' ? -1 : 1) * ((fullSpeed ? RUNFULLSPEED : RUNSTARTSPEED) + additionalRunVelocity);
 }
 
+function objectsAreTouching(object1, object2) {
+  for (var i = 0; i < game.physics.p2.world.narrowphase.contactEquations.length; i++) {
+    var equation = game.physics.p2.world.narrowphase.contactEquations[i];
+    if ((equation.bodyA === object1 || equation.bodyA === object2) && (equation.bodyB === object1 || equation.bodyB === object2)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function getTouches(object) {
+  var yAxis = p2.vec2.fromValues(0, 1);
+  var xAxis = p2.vec2.fromValues(1, 0);
+  var up = false;
+  var down = false;
+  var left = false;
+  var right = false;
+  for (var i = 0; i < game.physics.p2.world.narrowphase.contactEquations.length; i++) {
+    var equation = game.physics.p2.world.narrowphase.contactEquations[i];
+    // Look for our target object
+    if (equation.bodyA === object.body.data || equation.bodyB === object.body.data) {
+      var dY = p2.vec2.dot(equation.normalA, yAxis); // Normal dot Y-axis
+      var dX = p2.vec2.dot(equation.normalA, xAxis); // Normal dot X-axis
+
+      if (equation.bodyA === object.body.data) {
+        // Reverse the direction according to what side of the equation we're on
+        dX *= -1;
+        dY *= -1;
+      }
+
+      if (dX > 0.5) {
+        right = true;
+      }
+      else if (dX < -0.5) {
+        left = true;
+      }
+
+      if (dY > 0.5) {
+        down = true;
+      }
+      else if (dY < -0.5) {
+        up = true;
+      }
+    }
+  }
+
+  return {
+    up: up,
+    down: down,
+    left: left,
+    right: right
+  };
+}
+
 function update() {
+  touches = getTouches(player);
+
   if (countDown) {
     if (!countDownStart) {
       countDownStart = game.time.now;
@@ -607,14 +664,10 @@ function update() {
     startText.y = game.camera.y + game.height/2;
   }
 
-  // Only apply physics to the objects layer
-  game.physics.arcade.collide(player, objects, collisionHandler);
-
-  // Reset velocity
-  var headHit = player.body.blocked.up;
-  var onFloor = player.body.blocked.down;
-  var onWallLeft = player.body.blocked.left;
-  var onWallRight = player.body.blocked.right;
+  var headHit = touches.up;
+  var onFloor = touches.down;
+  var onWallLeft = touches.left;
+  var onWallRight = touches.right;
 
   if (Math.abs(player.body.velocity.x)) {
     player.body.velocity.x *= VELOCITYDAMPING;
@@ -622,10 +675,6 @@ function update() {
 
   if (headHit) {
     playSound('head bump');
-  }
-
-  if (mode === 'jump' && onFloor) {
-    playSound('land');
   }
 
   if (!runDisabled && cursors.left.isDown) {
@@ -641,6 +690,7 @@ function update() {
       // If we were jumping, but we landed on the floor, show the landing animation
       if (mode === 'jump') {
         mode = 'land';
+        playSound('land');
         player.animations.play('land');
         landStart = game.time.now;
       }
@@ -674,11 +724,14 @@ function update() {
   if (jumpKey.isDown) {
     if (jumpReleased) {
       if (onFloor) {
+        // Get off the ground
+        player.body.y -= 1;
+
         player.body.velocity.y = -1 * JUMPVELOCITY;
         mode = 'jump';
         player.animations.play('jump');
       }
-      else if (onWallLeft || onWallRight && player.body.velocity.y <= 0) {
+      else if ((onWallLeft || onWallRight) && player.body.velocity.y <= MAXWALLJUMPVELOCITY) {
         var jumpDirection = onWallLeft ? 'right' : 'left';
         if (lastWallJumpDirection === jumpDirection) {
           // jumpReleased = true; // ?
@@ -753,20 +806,16 @@ function update() {
     lastWallJumpDirection = null;
   }
 
-  // Test if the player touches the flag
   if (levelComplete) {
-    // Flag follows player
-    // var dirFactor = facing === 'left' ? 1 : -1;
-    // flag.x = player.x - flag.width + 32*dirFactor;
-    // flag.y = player.y + 32;
-    // setSpriteDirection(flag, facing === 'left' ? 'right' : 'left');
-  }
-  else {
-    game.physics.arcade.collide(player, flag, flagCollisionHandler);
+    // Make the flag fall
+    flag.body.velocity.x = -100;
+    if (flag.body.velocity.y < 500) {
+      flag.body.velocity.y += 15;
+    }
   }
 }
 
-function flagCollisionHandler(ob1, obj2) {
+function handleLevelComplete() {
   if (levelComplete) {
     return;
   }
@@ -805,15 +854,12 @@ function flagCollisionHandler(ob1, obj2) {
   playSound('yea');
   playSound('level complete');
 
-  // Give the flag gravity so it falls
-  flag.body.gravity.y = GRAVITY;
-
   // Stop the player
-  player.body.velocity.x = 0;
-  player.body.velocity.y = 0;
+  // player.body.setZeroVelocity();
 
   levelText = game.add.text(game.camera.x + game.width/2, game.camera.y + game.height/2, message);
-  levelText.anchor.setTo(0.5);
+  levelText.fixedToCamera = true;
+  levelText.anchor.setTo(0.5, 1);
 
   levelText.font = 'Revalia';
   levelText.fontSize = 60;
@@ -829,7 +875,23 @@ function flagCollisionHandler(ob1, obj2) {
   resetTimeout = setTimeout(passed ? nextLevel : reset, LEVELPAUSETIME);
 }
 
-function collisionHandler(obj1, obj2) {
+function checkFlagContact(body1, body2) {
+  var isPlayer = body1 === player.body || body2 === player.body;
+  var isFlag = body1 === flag.body || body2 === flag.body;
+  if (isPlayer && isFlag) {
+    // End level
+    handleLevelComplete();
+
+    // Stop collision
+    return false;
+  }
+  else if (isFlag) {
+    // Flag cannot collide
+    return false;
+  }
+
+  // Let collision happen
+  return true;
 }
 
 function render() {

@@ -27,7 +27,8 @@
 
   function debug() {
     game.debugMode = true;
-    foreground.debug = true;
+    objects.debug = true;
+    player.body.debug = true; // Show collision box
   }
 
   function tweak() {
