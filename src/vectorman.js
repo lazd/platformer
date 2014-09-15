@@ -116,7 +116,7 @@ var levels = [];
 
 levels[0] = {
   player: [130, 838],
-  flag: [3984, 212],
+  flag: [4048, 244],
   map: '1',
   tiles: 'vectorman',
   music: 'Bamboo Mill',
@@ -151,10 +151,12 @@ function newGame() {
 }
 
 function preload() {
+  game.load.image('button-up', 'assets/sprites/button-up.png');
+  game.load.image('button-down', 'assets/sprites/button-down.png');
   game.load.image('button-left', 'assets/sprites/button-left.png');
   game.load.image('button-right', 'assets/sprites/button-right.png');
-  game.load.image('button-down', 'assets/sprites/button-down.png');
   game.load.image('button-circle', 'assets/sprites/button-circle.png');
+  game.load.image('button-square', 'assets/sprites/button-square.png');
 
   for (var name in levels) {
     var level = levels[name];
@@ -325,7 +327,7 @@ function create() {
 
   // Same as bottom of background
   game.stage.backgroundColor = '#261e11';
-  bg = game.add.tileSprite(0, 0, currentLevel.background.width, currentLevel.background.height, 'background-'+currentLevel.background.name);
+  bg = game.add.image(0, 0,  'background-'+currentLevel.background.name);
   bg.fixedToCamera = true;
 
   map = game.add.tilemap(currentLevel.map);
@@ -341,7 +343,6 @@ function create() {
   // Setup player
   player = game.add.sprite(128, 128, 'vectorman');
   player.anchor.setTo(0.5, 0); // So it flips around its middle
-  // game.physics.enable(player, Phaser.Physics.ARCADE);
   game.physics.p2.enable(player);
 
   player.body.fixedRotation = true; // Never rotate
@@ -396,11 +397,11 @@ function create() {
 
     buttons.visible = true;
 
-    var buttonXStart = 64;
-    var buttonXEnd = game.width - (64);
-    var buttonY = game.height - (64 + 32);
+    var buttonXStart = 32;
+    var buttonXEnd = game.width - 32;
+    var buttonY = game.height - 128;
     var buttonWidth = 96;
-    var buttonSpacing = buttonWidth + 32;
+    var buttonSpacing = buttonWidth + 24;
 
     addButton('button-left', buttonXStart, buttonY, function() {
       cursors.left.isDown = true;
@@ -419,6 +420,15 @@ function create() {
     }, function() {
       jumpKey.isDown = false;
     });
+
+    addButton('button-down', buttonXStart + buttonSpacing/2, buttonY + buttonSpacing/2, function() {
+      cursors.down.isDown = true;
+    }, function() {
+      cursors.down.isDown = false;
+    });
+
+    // CocoonJS fix: Doesn't like to draw the last sprite added
+    this.game.add.sprite(0,0,'');
 
     document.addEventListener('touchstart', function(event) {
       for (var i = 0; i < event.touches.length; i++) {
