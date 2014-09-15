@@ -367,6 +367,7 @@ function create() {
   flag.body.setRectangleFromSprite(flag); // Size of sprite
   flag.body.fixedRotation = true; // Never rotate
   flag.body.kinematic = true; // Immovable
+  flag.anchor.setTo(0, 0);
 
   // Check for collisions with the flag
   game.physics.p2.setPostBroadphaseCallback(checkFlagContact, this);
