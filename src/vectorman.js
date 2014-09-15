@@ -666,7 +666,7 @@ function update() {
 
   if (mode === 'jump' && onFloor) {
     // Do this in case we start runnning before we land
-    playSound('land');
+    playSound('land', true);
   }
 
   if (!runDisabled && cursors.left.isDown) {
