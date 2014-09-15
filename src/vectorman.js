@@ -136,7 +136,7 @@ levels[0] = {
 };
 
 var PIXELRATIO = window.devicePixelRatio || 1;
-var game = new Phaser.Game(Math.min(1024, window.innerWidth) * PIXELRATIO, Math.min(768, window.innerHeight) * PIXELRATIO, Phaser.CANVAS, 'vectorman');
+var game = new Phaser.Game(Math.min(1024, window.innerWidth) * PIXELRATIO, Math.min(768, window.innerHeight) * PIXELRATIO, Phaser.CANVAS, '');
 
 game.state.add('run', {
   preload: preload,
