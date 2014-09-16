@@ -95,6 +95,23 @@ var facingSwitchDisabled = false;
 
 var lastWallJumpDirection;
 
+// The pause button sprite
+// We need this to unpause outside of the game loop
+var pauseButton;
+
+// A map of current finger touches by ID
+var currentTouches = {};
+
+// The state of touch input
+var touchControls = {
+  left: false,
+  right: false,
+  down: false,
+  jump: false,
+  reset: false,
+  pause: false
+};
+
 // All sounds to load
 var sounds = [
   'head bump',
@@ -135,6 +152,22 @@ levels[0] = {
   setup: function() {}
 };
 
+levels[1] = {
+  player: [130, 1416],
+  flag: [1728, 278],
+  map: '2',
+  tiles: 'vectorman',
+  music: 'Bamboo Mill',
+  facing: 'right',
+  par: 9,
+  background: {
+    name: 'city',
+    width: 3188,
+    height: 900
+  },
+  setup: function() {}
+};
+
 var PIXELRATIO = window.devicePixelRatio || 1;
 var width = Math.min(1024, window.innerWidth) * PIXELRATIO;
 var height = Math.min(768, window.innerHeight) * PIXELRATIO;
@@ -165,12 +198,12 @@ function newGame() {
 }
 
 function preload() {
-  game.load.image('button-up', 'assets/sprites/button-up.png');
   game.load.image('button-down', 'assets/sprites/button-down.png');
   game.load.image('button-left', 'assets/sprites/button-left.png');
   game.load.image('button-right', 'assets/sprites/button-right.png');
   game.load.image('button-circle', 'assets/sprites/button-circle.png');
-  game.load.image('button-square', 'assets/sprites/button-square.png');
+  game.load.image('button-pause', 'assets/sprites/button-pause.png');
+  game.load.image('button-reset', 'assets/sprites/button-reset.png');
 
   for (var name in levels) {
     var level = levels[name];
@@ -216,8 +249,9 @@ function restart() {
 function pause() {
   game.paused = true;
 
-  // Catch unpause
+  // The game loop doesn't run during pause, catch manually
   document.addEventListener('keydown', unpause);
+  document.addEventListener('touchstart', handleUnpauseTouchStart);
 }
 
 function unpause() {
@@ -226,9 +260,17 @@ function unpause() {
 
   unpauseTimeout = setTimeout(function() {
     game.paused = false;
-  }, 100);
+  }, 150);
 
   document.removeEventListener('keydown', unpause);
+  document.removeEventListener('touchstart', handleUnpauseTouchStart);
+}
+
+function handleUnpauseTouchStart(event) {
+  var touch = getCoordsFromTouch(event.touches[0]);
+  if (buttonPressed(pauseButton, touch)) {
+    unpause();
+  }
 }
 
 // Reset the current level
@@ -409,95 +451,109 @@ function create() {
 
     buttons.visible = true;
 
-    var buttonXStart = 32  * PIXELRATIO;
+    var buttonStart = 32  * PIXELRATIO;
     var buttonXEnd = game.width - 32  * PIXELRATIO;
     var buttonY = game.height - 128  * PIXELRATIO;
     var buttonWidth = 96  * PIXELRATIO;
+    var buttonLargeWidth = 192  * PIXELRATIO;
     var buttonSpacing = buttonWidth + 24  * PIXELRATIO;
 
-    addButton('button-left', buttonXStart, buttonY, function() {
-      cursors.left.isDown = true;
-    }, function() {
-      cursors.left.isDown = false;
-    });
+    addButton('button-left', 'left', buttonStart, buttonY);
 
-    addButton('button-right', buttonXStart + buttonSpacing, buttonY, function() {
-      cursors.right.isDown = true;
-    }, function() {
-      cursors.right.isDown = false;
-    });
+    addButton('button-right', 'right', buttonStart + buttonSpacing, buttonY);
 
-    addButton('button-circle', buttonXEnd - buttonWidth, buttonY, function() {
-      jumpKey.isDown = true;
-    }, function() {
-      jumpKey.isDown = false;
-    });
+    addButton('button-down', 'down', buttonStart + buttonSpacing/2, buttonY + buttonSpacing/2);
 
-    addButton('button-down', buttonXStart + buttonSpacing/2, buttonY + buttonSpacing/2, function() {
-      cursors.down.isDown = true;
-    }, function() {
-      cursors.down.isDown = false;
-    });
+    addButton('button-circle', 'jump', buttonXEnd - buttonLargeWidth/2, buttonY);
+
+    addButton('button-reset', 'reset', buttonXEnd - buttonStart/2, buttonStart/2, 0.5);
+
+    pauseButton = addButton('button-pause', 'pause', buttonStart/2, buttonStart/2, 0.5);
 
     // CocoonJS fix: Doesn't like to draw the last sprite added
     this.game.add.sprite(0, 0, '');
 
-    document.addEventListener('touchstart', function(event) {
-      for (var i = 0; i < event.touches.length; i++) {
-        var touch = event.touches[i];
-        var x = touch.clientX * PIXELRATIO - game.canvas.offsetLeft;
-        var y = touch.clientY * PIXELRATIO - game.canvas.offsetTop;
-
-        onTouchStart(x, y, touch.identifier);
-      }
-    });
-
-    document.addEventListener('touchend', function(event) {
-      for (var i = 0; i < event.changedTouches.length; i++) {
-        var touch = event.changedTouches[i];
-        var x = touch.clientX * PIXELRATIO - game.canvas.offsetLeft;
-        var y = touch.clientY * PIXELRATIO - game.canvas.offsetTop;
-
-        onTouchEnd(x, y, touch.identifier);
-      }
-    });
+    // Handle touches
+    game.canvas.addEventListener('touchstart', handleTouchEvent);
+    game.canvas.addEventListener('touchmove', handleTouchEvent);
+    game.canvas.addEventListener('touchend', handleTouchEnd);
   }
 }
 
-function onTouchEnd(x, y, touchID) {
-  for (var i = 0; i < buttons.children.length; i++) {
-    var button = buttons.children[i];
-    if (button.touchID === touchID) {
-      button.onUp();
+function getCoordsFromTouch(touch) {
+  return {
+    x: touch.clientX * PIXELRATIO - game.canvas.offsetLeft,
+    y: touch.clientY * PIXELRATIO - game.canvas.offsetTop,
+    id: touch.identifier
+  };
+}
+
+function handleTouchEvent(event) {
+  for (var i = 0; i < event.touches.length; i++) {
+    var touch = getCoordsFromTouch(event.touches[i]);
+    currentTouches[touch.id] = touch;
+  }
+}
+
+function handleTouchEnd(event) {
+  for (var i = 0; i < event.changedTouches.length; i++) {
+    var touchId = event.changedTouches[i].identifier;
+    currentTouches[touchId] = null;
+  }
+}
+
+function setTouchControls() {
+  // Reset controls
+  for (var action in touchControls) {
+    touchControls[action] = false;
+  }
+
+  // Find control touches
+  for (var id in currentTouches) {
+    var touch = currentTouches[id];
+    if (!touch) {
+      // Skip touches that were set to null
+      continue;
+    }
+
+    for (var i = 0; i < buttons.children.length; i++) {
+      var button = buttons.children[i];
+      if (buttonPressed(button, touch)) {
+        touchControls[button.name] = true;
+      }
     }
   }
 }
 
-function onTouchStart(x, y, touchID) {
-  for (var i = 0; i < buttons.children.length; i++) {
-    var button = buttons.children[i];
-    if (x > button.x - game.camera.x &&
-        x < button.x - game.camera.x + button.width &&
-        y > button.y - game.camera.y &&
-        y < button.y - game.camera.y + button.height) {
-      button.onDown();
-      button.touchID = touchID;
-    }
-  }
+function buttonPressed(button, touch) {
+  return (
+    touch.x > button.x - game.camera.x &&
+    touch.x < button.x - game.camera.x + button.width &&
+    touch.y > button.y - game.camera.y &&
+    touch.y < button.y - game.camera.y + button.height
+  );
 }
 
-function addButton(sprite, x, y, onDown, onUp) {
+function addButton(sprite, name, x, y, scale) {
   var button = game.add.sprite(0, 0, sprite);
 
-  if (PIXELRATIO === 1) {
-    button.scale.setTo(0.5);
+  if (scale === undefined) {
+    scale = 1;
   }
 
+  if (PIXELRATIO === 1) {
+    scale *= 0.5;
+  }
+
+  if (scale != 1) {
+    button.scale.setTo(scale);
+  }
+
+  button.name = name;
   button.fixedToCamera = true;
   button.cameraOffset.x = x;
   button.cameraOffset.y = y;
-  button.onDown = onDown;
-  button.onUp = onUp;
+
   buttons.add(button);
   return button;
 }
@@ -630,8 +686,6 @@ function getTouches(object) {
 }
 
 function update() {
-  touches = getTouches(player);
-
   if (countDown) {
     if (!countDownStart) {
       countDownStart = game.time.now;
@@ -658,21 +712,37 @@ function update() {
     }
   }
 
-  if (resetKey.isDown) {
+  // Set touch control state
+  setTouchControls();
+
+  var controls = {
+    left: cursors.left.isDown || touchControls.left,
+    right: cursors.right.isDown || touchControls.right,
+    down: cursors.down.isDown || touchControls.down,
+    jump: jumpKey.isDown || touchControls.jump,
+    reset: resetKey.isDown || touchControls.reset,
+    pause: pauseKey.isDown || touchControls.pause
+  };
+
+  if (controls.reset) {
     reset();
     return;
   }
 
-  if (pauseKey.isDown) {
+  if (controls.pause) {
     pause();
     return;
   }
+
+  // Get collisions
+  touches = getTouches(player);
 
   var headHit = touches.up;
   var onFloor = touches.down;
   var onWallLeft = touches.left;
   var onWallRight = touches.right;
 
+  // Damp X velocity
   if (Math.abs(player.body.velocity.x)) {
     player.body.velocity.x *= VELOCITYDAMPING;
   }
@@ -686,10 +756,10 @@ function update() {
     playSound('land', true);
   }
 
-  if (!runDisabled && cursors.left.isDown) {
+  if (!runDisabled && controls.left) {
     run('left');
   }
-  else if (!runDisabled && cursors.right.isDown) {
+  else if (!runDisabled && controls.right) {
     run('right');
   }
   else {
@@ -703,7 +773,7 @@ function update() {
         landStart = game.time.now;
       }
 
-      if (cursors.down.isDown) {
+      if (controls.down) {
         if (mode != 'crouch') {
           player.animations.play('crouch');
         }
@@ -729,7 +799,7 @@ function update() {
     canBoost = true;
   }
 
-  if (jumpKey.isDown) {
+  if (controls.jump) {
     if (jumpReleased) {
       if (onFloor) {
         // Get off the ground
@@ -769,7 +839,7 @@ function update() {
 
         playSound('land');
       }
-      else if (jumpKey.isDown && canBoost) {
+      else if (controls.jump && canBoost) {
         player.body.velocity.y = -1 * BOOSTVELOCITY;
         boostCount++;
         player.animations.stop();
