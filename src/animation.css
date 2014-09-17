@@ -1,0 +1,43 @@
+body {
+  margin: 0;
+  font-family: Courier;
+  cursor: crosshair;
+}
+
+#tools {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+#info {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+dd, dt, dl {
+  margin: 0;
+}
+
+#parts {
+  list-style: none;
+  margin: 0;
+}
+
+#parts li {
+  margin: 0;
+  border: 1px solid gray;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  background: white;
+}
+
+#parts li.selected {
+  background: gray;
+}
+
+#parts li img {
+  margin: 10px;
+}
